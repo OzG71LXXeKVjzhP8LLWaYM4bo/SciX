@@ -224,6 +224,9 @@ def get_structural_features() -> list[str]:
         "dpn",
         "Dispersity",
         "cLogP_predicted",
+        "Target",   # Target molecular weight
+        "NMR",      # Actual MW by NMR spectroscopy
+        "GPC",      # Actual MW by gel permeation chromatography
     ]
 
 

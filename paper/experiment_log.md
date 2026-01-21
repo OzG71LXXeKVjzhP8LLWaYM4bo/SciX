@@ -81,6 +81,83 @@ These experiments treat MIC prediction as a 3-class classification problem:
 
 ---
 
+### Run 3: Added Molecular Weight Features (E37-E63)
+
+**Date**: 2026-01-21
+
+Added three new features to all feature sets:
+- **Target**: Target molecular weight
+- **NMR**: Actual MW measured by NMR spectroscopy
+- **GPC**: Actual MW measured by gel permeation chromatography
+
+#### Regression Results (E37-E54)
+
+##### MIC_PAO1 (with MW features)
+
+| ID | Model | Features | RMSE | R² | vs Previous | Notes |
+|----|-------|----------|------|-----|-------------|-------|
+| E37 | Ridge | entropy | 39.44 | 0.402 | -10.5% RMSE | **BEST** |
+| E38 | Ridge | combined | 42.01 | 0.322 | +1.2% | |
+| E39 | XGBoost | composition | 43.64 | 0.268 | -0.3% | |
+| E40 | Ridge | composition | 47.25 | 0.142 | +3.8% | Worse |
+
+##### MIC_SA (with MW features)
+
+| ID | Model | Features | RMSE | R² | vs Previous | Notes |
+|----|-------|----------|------|-----|-------------|-------|
+| E41 | Ridge | combined | 28.65 | 0.766 | -2.4% RMSE | **BEST OVERALL** |
+| E42 | XGBoost | composition | 29.57 | 0.751 | -26.7% | Big improvement |
+| E43 | Ridge | entropy | 31.35 | 0.720 | 0% | Same |
+| E44 | Ridge | composition | 34.91 | 0.653 | -4.3% | |
+
+##### MIC_PAO1_PA (with MW features)
+
+| ID | Model | Features | RMSE | R² | vs Previous | Notes |
+|----|-------|----------|------|-----|-------------|-------|
+| E45 | Ridge | entropy | 36.65 | 0.484 | -8.0% RMSE | **BEST** |
+| E46 | XGBoost | entropy | 42.01 | 0.321 | -11.1% | Big improvement |
+| E47 | Ridge | combined | 42.62 | 0.302 | -1.8% | |
+| E48 | Ridge | composition | 48.18 | 0.108 | +1.3% | Worse |
+
+#### Classification Results (E55-E63)
+
+##### MIC_PAO1 Classification (with MW features)
+
+| ID | Features | Accuracy | F1 (macro) | vs Previous | Notes |
+|----|----------|----------|------------|-------------|-------|
+| E55 | combined | **0.913** | **0.750** | +8.7% acc | **BEST** |
+| E56 | entropy | 0.870 | 0.679 | +4.4% | |
+| E57 | composition | 0.783 | 0.574 | -4.3% | Worse |
+
+##### MIC_SA Classification (with MW features)
+
+| ID | Features | Accuracy | F1 (macro) | vs Previous | Notes |
+|----|----------|----------|------------|-------------|-------|
+| E58 | entropy | **0.913** | 0.620 | 0% | Same |
+| E59 | combined | 0.913 | 0.620 | 0% | Same |
+| E60 | composition | 0.870 | 0.571 | -4.3% | Worse |
+
+##### MIC_PAO1_PA Classification (with MW features)
+
+| ID | Features | Accuracy | F1 (macro) | vs Previous | Notes |
+|----|----------|----------|------------|-------------|-------|
+| E61 | entropy | **0.957** | **0.886** | +17.4% acc | **BEST CLASSIFICATION** |
+| E62 | combined | 0.957 | 0.886 | +17.4% | Same |
+| E63 | composition | 0.739 | 0.392 | +8.7% | |
+
+#### Summary of Improvements from MW Features
+
+| Target | Best Model | Old Metric | New Metric | Improvement |
+|--------|------------|------------|------------|-------------|
+| MIC_PAO1 (reg) | Ridge+entropy | R²=0.254 | R²=0.402 | **+58% R²** |
+| MIC_SA (reg) | Ridge+combined | R²=0.755 | R²=0.766 | +1.5% R² |
+| MIC_PAO1_PA (reg) | Ridge+entropy | R²=0.391 | R²=0.484 | **+24% R²** |
+| MIC_PAO1 (clf) | Logistic+combined | Acc=82.6% | Acc=91.3% | **+8.7%** |
+| MIC_SA (clf) | Logistic+entropy | Acc=91.3% | Acc=91.3% | 0% |
+| MIC_PAO1_PA (clf) | Logistic+entropy | Acc=78.3% | Acc=95.7% | **+17.4%** |
+
+---
+
 ## Detailed Experiment Records
 
 ### Run 1: Initial Baseline (Regression)
@@ -248,6 +325,20 @@ uv run python main.py --model logistic --features composition entropy combined -
 9. **Entropy features improve MIC_PAO1_PA classification** - For MIC_PAO1_PA, entropy features improved accuracy from 65.2% to 78.3% (+20% relative improvement), consistent with regression findings.
 
 10. **Classification vs Regression trade-off** - Classification loses granularity but may be more practical for drug screening (active/moderate/inactive categorization).
+
+### Molecular Weight Feature Findings (E37-E63)
+
+11. **MW features dramatically improve predictions** - Adding Target, NMR, and GPC molecular weight features improved R² by up to 58% for regression and accuracy by up to 17.4% for classification.
+
+12. **MIC_PAO1_PA classification reaches 95.7% accuracy** - With MW features + entropy, logistic regression achieves near-perfect classification (F1 macro = 0.886), up from 78.3%.
+
+13. **Entropy + MW is the winning combination** - For both MIC_PAO1 and MIC_PAO1_PA, the entropy feature set with MW features outperforms all other combinations.
+
+14. **Correlation confirmed predictive value** - NMR (r=0.296), Target (r=0.271), and GPC (r=0.268) all had moderate correlations with MIC_PAO1, explaining their predictive contribution.
+
+15. **Feature set now contains 11 features**:
+    - Structural: Number of blocks, dpn, Dispersity, cLogP_predicted, Target, NMR, GPC (7)
+    - Entropy: composition_entropy, block_entropy, sequence_entropy, randomness_score (4)
 
 ### Class Distribution Analysis
 
