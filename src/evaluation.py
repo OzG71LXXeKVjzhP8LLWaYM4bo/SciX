@@ -8,7 +8,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    mean_absolute_error,
+    mean_squared_error,
+    r2_score,
+)
 
 
 @dataclass
@@ -36,6 +44,54 @@ def calculate_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float
         "mae": mean_absolute_error(y_true, y_pred),
         "r2": r2_score(y_true, y_pred),
     }
+
+
+def calculate_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
+    """Calculate classification metrics."""
+    return {
+        "accuracy": accuracy_score(y_true, y_pred),
+        "f1_macro": f1_score(y_true, y_pred, average="macro"),
+        "f1_weighted": f1_score(y_true, y_pred, average="weighted"),
+    }
+
+
+def plot_confusion_matrix(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    class_names: list[str] = None,
+    title: str = "Confusion Matrix",
+    save_path: Optional[str | Path] = None,
+) -> plt.Figure:
+    """Plot confusion matrix for classification results."""
+    cm = confusion_matrix(y_true, y_pred)
+
+    if class_names is None:
+        class_names = [f"Class {i}" for i in range(len(cm))]
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    sns.heatmap(
+        cm,
+        annot=True,
+        fmt="d",
+        cmap="Blues",
+        xticklabels=class_names,
+        yticklabels=class_names,
+        ax=ax,
+    )
+
+    ax.set_xlabel("Predicted", fontsize=12)
+    ax.set_ylabel("Actual", fontsize=12)
+    ax.set_title(title, fontsize=14)
+
+    plt.tight_layout()
+
+    if save_path:
+        save_path = Path(save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+
+    return fig
 
 
 def plot_learning_curves(

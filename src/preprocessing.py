@@ -63,6 +63,30 @@ def clean_mic_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def bin_mic_values(y: np.ndarray) -> np.ndarray:
+    """
+    Bin MIC values into 3 classes for classification.
+
+    Classes:
+        0 = Low (Active): MIC <= 64
+        1 = Medium (Moderate): 64 < MIC <= 128
+        2 = High (Inactive): MIC > 128
+
+    Args:
+        y: Array of continuous MIC values
+
+    Returns:
+        Array of class labels (0, 1, or 2)
+    """
+    bins = np.zeros_like(y, dtype=int)
+    bins[(y > 64) & (y <= 128)] = 1
+    bins[y > 128] = 2
+    return bins
+
+
+MIC_CLASS_NAMES = ["Low (<=64)", "Medium (64-128)", "High (>128)"]
+
+
 def get_base_features(df: pd.DataFrame) -> list[str]:
     """Return list of base feature column names."""
     return [

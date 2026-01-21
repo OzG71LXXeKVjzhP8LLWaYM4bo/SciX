@@ -7,7 +7,7 @@ from typing import Any, Optional
 import numpy as np
 import torch
 import torch.nn as nn
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBRegressor
 
@@ -307,6 +307,43 @@ class RidgeRegressor:
         return {f"feature_{i}": v for i, v in enumerate(coefs)}
 
 
+class LogisticRegressionClassifier:
+    """Logistic regression classifier for MIC category prediction."""
+
+    def __init__(self, C: float = 1.0, max_iter: int = 1000):
+        self.model = LogisticRegression(C=C, max_iter=max_iter, solver="lbfgs")
+        self.scaler = StandardScaler()
+
+    def fit(
+        self,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+        X_val: np.ndarray = None,
+        y_val: np.ndarray = None,
+        **kwargs,
+    ) -> None:
+        """Train the logistic regression classifier."""
+        X_scaled = self.scaler.fit_transform(X_train)
+        self.model.fit(X_scaled, y_train)
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """Make class predictions."""
+        X_scaled = self.scaler.transform(X)
+        return self.model.predict(X_scaled)
+
+    def predict_proba(self, X: np.ndarray) -> np.ndarray:
+        """Get class probabilities."""
+        X_scaled = self.scaler.transform(X)
+        return self.model.predict_proba(X_scaled)
+
+    def get_coefficients(self, feature_names: list[str] = None) -> dict[str, np.ndarray]:
+        """Get model coefficients for each class."""
+        coefs = self.model.coef_
+        if feature_names:
+            return {name: coefs[:, i] for i, name in enumerate(feature_names)}
+        return {f"feature_{i}": coefs[:, i] for i in range(coefs.shape[1])}
+
+
 def get_model(model_type: str, input_dim: int, **kwargs) -> Any:
     """Factory function to create models."""
     if model_type == "nn":
@@ -315,6 +352,8 @@ def get_model(model_type: str, input_dim: int, **kwargs) -> Any:
         return XGBoostRegressor(**kwargs)
     elif model_type == "ridge":
         return RidgeRegressor(**kwargs)
+    elif model_type == "logistic":
+        return LogisticRegressionClassifier(**kwargs)
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 

@@ -48,6 +48,37 @@ This document tracks all experiments run for the antibacterial polymer MIC predi
 | E26 | 2026-01-21 | XGBoost | combined | MIC_PAO1_PA | 54.79 | 23.42 | -0.154 | |
 | E27 | 2026-01-21 | Ridge | combined | MIC_PAO1_PA | 43.39 | 25.59 | 0.276 | |
 
+### Logistic Regression Classification Experiments (E28-E36)
+
+These experiments treat MIC prediction as a 3-class classification problem:
+- **Class 0 (Low/Active)**: MIC ≤ 64
+- **Class 1 (Medium/Moderate)**: 64 < MIC ≤ 128
+- **Class 2 (High/Inactive)**: MIC > 128
+
+#### MIC_PAO1 Classification
+
+| ID | Date | Model | Features | Target | Accuracy | F1 (macro) | F1 (weighted) | Notes |
+|----|------|-------|----------|--------|----------|------------|---------------|-------|
+| E28 | 2026-01-21 | Logistic | composition | MIC_PAO1 | 0.826 | 0.683 | 0.824 | **Best F1** |
+| E29 | 2026-01-21 | Logistic | entropy | MIC_PAO1 | 0.826 | 0.537 | 0.785 | Lower F1 |
+| E30 | 2026-01-21 | Logistic | combined | MIC_PAO1 | 0.826 | 0.683 | 0.824 | Same as comp |
+
+#### MIC_SA Classification
+
+| ID | Date | Model | Features | Target | Accuracy | F1 (macro) | F1 (weighted) | Notes |
+|----|------|-------|----------|--------|----------|------------|---------------|-------|
+| E31 | 2026-01-21 | Logistic | composition | MIC_SA | 0.913 | 0.620 | 0.893 | High acc |
+| E32 | 2026-01-21 | Logistic | entropy | MIC_SA | 0.913 | 0.620 | 0.893 | Same |
+| E33 | 2026-01-21 | Logistic | combined | MIC_SA | 0.913 | 0.620 | 0.893 | Same |
+
+#### MIC_PAO1_PA Classification
+
+| ID | Date | Model | Features | Target | Accuracy | F1 (macro) | F1 (weighted) | Notes |
+|----|------|-------|----------|--------|----------|------------|---------------|-------|
+| E34 | 2026-01-21 | Logistic | composition | MIC_PAO1_PA | 0.652 | 0.294 | 0.652 | Worst |
+| E35 | 2026-01-21 | Logistic | entropy | MIC_PAO1_PA | 0.783 | 0.527 | 0.763 | **Best** |
+| E36 | 2026-01-21 | Logistic | combined | MIC_PAO1_PA | 0.783 | 0.527 | 0.763 | Same as entropy |
+
 ---
 
 ## Detailed Experiment Records
@@ -145,6 +176,8 @@ uv run python main.py --seed 42
 
 *Summary of important findings from experiments.*
 
+### Regression Findings (E1-E27)
+
 1. **Shannon Entropy features improve Ridge regression by 11.1%** - This is the most significant finding, supporting the hypothesis that sequence randomness has predictive value.
 
 2. **Simple models beat complex models** - Ridge regression outperformed both neural networks and XGBoost, demonstrating that feature engineering matters more than model complexity for small datasets.
@@ -156,6 +189,24 @@ uv run python main.py --seed 42
 5. **Neural networks underperformed** - Despite regularization (dropout, weight decay, early stopping), NNs struggled with the small dataset size.
 
 6. **Combined features help for some targets** - MIC_SA and MIC_PAO1 benefited from combined features, suggesting complementary information.
+
+### Classification Findings (E28-E36)
+
+7. **High classification accuracy achievable** - Logistic regression achieves 91.3% accuracy on MIC_SA and 82.6% on MIC_PAO1, demonstrating that categorical MIC prediction is viable.
+
+8. **Class imbalance affects performance** - MIC_SA has extreme imbalance (only 1 sample in Low class), artificially inflating accuracy. F1 macro scores (0.52-0.68) better reflect true performance.
+
+9. **Entropy features improve MIC_PAO1_PA classification** - For MIC_PAO1_PA, entropy features improved accuracy from 65.2% to 78.3% (+20% relative improvement), consistent with regression findings.
+
+10. **Classification vs Regression trade-off** - Classification loses granularity but may be more practical for drug screening (active/moderate/inactive categorization).
+
+### Class Distribution Analysis
+
+| Target | Low (≤64) | Medium (64-128) | High (>128) |
+|--------|-----------|-----------------|-------------|
+| MIC_PAO1 | 21 (18.9%) | 75 (67.6%) | 15 (13.5%) |
+| MIC_SA | 1 (0.9%) | 83 (74.8%) | 27 (24.3%) |
+| MIC_PAO1_PA | 21 (18.9%) | 75 (67.6%) | 15 (13.5%) |
 
 ---
 
@@ -179,4 +230,13 @@ uv run python main.py --quiet
 
 # Custom output directory
 uv run python main.py --output results/run_001
+
+# Run logistic regression classification
+uv run python main.py --model logistic --features entropy --target MIC_PAO1
+
+# Run all logistic experiments
+uv run python main.py --model logistic --features composition entropy combined --target MIC_PAO1 MIC_SA MIC_PAO1_PA
+
+# Compare regression and classification models
+uv run python main.py --model logistic ridge --features entropy --target MIC_PAO1
 ```
