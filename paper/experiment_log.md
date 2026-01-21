@@ -158,6 +158,77 @@ Added three new features to all feature sets:
 
 ---
 
+### Run 4: 5-Fold Cross-Validation with 5 Random Seeds
+
+**Date**: 2026-01-22
+
+**Motivation**: Single 80/20 splits with only ~23 test samples showed high variance and potentially inflated results. Implemented stratified 5-fold CV with 5 different random seeds (42, 123, 456, 789, 1000) to obtain robust performance estimates.
+
+**Configuration**:
+```bash
+# Run with multiple seeds for robust estimates
+for seed in 42 123 456 789 1000; do
+  uv run python main.py --model nn xgboost ridge logistic --features composition entropy combined --target MIC_PAO1 MIC_SA MIC_PAO1_PA --cv 5 --seed $seed
+done
+```
+
+#### Aggregated Results (5 seeds × 5-fold CV = 25 evaluations per configuration)
+
+##### Regression Results (Best Models)
+
+| Target | Model | Features | Mean R² | Std | Notes |
+|--------|-------|----------|---------|-----|-------|
+| **MIC_SA** | Ridge | combined | **+0.724** | 0.017 | **Best overall** |
+| MIC_SA | XGBoost | combined | +0.707 | 0.043 | |
+| MIC_SA | XGBoost | entropy | +0.703 | 0.038 | |
+| MIC_SA | Ridge | entropy | +0.702 | 0.013 | |
+| MIC_SA | Ridge | composition | +0.684 | 0.022 | |
+| MIC_PAO1_PA | XGBoost | entropy | +0.183 | 0.079 | Weak signal |
+| MIC_PAO1_PA | XGBoost | combined | +0.131 | 0.045 | Weak signal |
+| MIC_PAO1 | XGBoost | combined | +0.118 | 0.099 | Weak signal |
+| MIC_PAO1 | XGBoost | entropy | +0.086 | 0.083 | Weak signal |
+
+##### Classification Results (Logistic Regression)
+
+| Target | Features | Mean Accuracy | Std | Entropy Benefit |
+|--------|----------|---------------|-----|-----------------|
+| **MIC_PAO1** | **entropy** | **80.9%** | 2.0% | **+6.5%** |
+| MIC_PAO1 | combined | 79.5% | 3.7% | |
+| MIC_PAO1 | composition | 74.4% | 1.2% | baseline |
+| **MIC_PAO1_PA** | **entropy** | **80.0%** | 2.1% | **+4.5%** |
+| MIC_PAO1_PA | combined | 78.9% | 1.2% | |
+| MIC_PAO1_PA | composition | 75.5% | 2.0% | baseline |
+| MIC_SA | composition | 93.9% | 1.2% | baseline |
+| MIC_SA | entropy | 93.7% | 0.5% | -0.2% |
+| MIC_SA | combined | 93.7% | 0.6% | |
+
+#### Key Findings from Robust Cross-Validation
+
+| Target | Task | Single-Split | 5-seed CV Mean | Status |
+|--------|------|--------------|----------------|--------|
+| MIC_PAO1 | Regression | R²=0.402 | R²=0.12 ± 0.10 | **Highly Inflated** |
+| MIC_SA | Regression | R²=0.766 | R²=0.72 ± 0.02 | ✓ Reliable |
+| MIC_PAO1_PA | Regression | R²=0.484 | R²=0.18 ± 0.08 | **Highly Inflated** |
+| MIC_PAO1 | Classification | 91.3% | 80.9% ± 2.0% | Inflated |
+| MIC_SA | Classification | 91.3% | 93.9% ± 1.2% | ✓ Reliable |
+| MIC_PAO1_PA | Classification | 95.7% | 80.0% ± 2.1% | **Highly Inflated** |
+
+#### Shannon Entropy Impact (Robust Estimates)
+
+**Classification** (entropy vs composition):
+- MIC_PAO1: 74.4% → 80.9% **(+6.5% improvement)**
+- MIC_PAO1_PA: 75.5% → 80.0% **(+4.5% improvement)**
+- MIC_SA: 93.9% → 93.7% (no improvement, already saturated)
+
+**Regression** (MIC_SA only - others unreliable):
+- Ridge entropy: R²=0.702
+- Ridge composition: R²=0.684
+- Difference: **+0.018 R²** (minimal impact)
+
+**Critical Insight**: Shannon entropy provides meaningful improvement (+4-6%) for classification on PAO1 targets, but minimal benefit for regression. The strong single-split results (95.7% accuracy) were artifacts of lucky data splits.
+
+---
+
 ## Detailed Experiment Records
 
 ### Run 1: Initial Baseline (Regression)
@@ -348,6 +419,20 @@ uv run python main.py --model logistic --features composition entropy combined -
 | MIC_SA | 1 (0.9%) | 83 (74.8%) | 27 (24.3%) |
 | MIC_PAO1_PA | 21 (18.9%) | 75 (67.6%) | 15 (13.5%) |
 
+### Cross-Validation Findings (5 seeds × 5-fold CV)
+
+16. **Single-split results were highly inflated** - Robust CV (5 seeds) revealed that reported R² values for MIC_PAO1 (0.402→0.12) and MIC_PAO1_PA (0.484→0.18) were lucky splits.
+
+17. **Only MIC_SA regression is reliable** - MIC_SA R² remained stable across seeds (0.72 ± 0.02), confirming genuine predictive power.
+
+18. **Classification more robust than regression** - Classification accuracy is more stable: MIC_SA 93.9% ± 1.2%, MIC_PAO1 80.9% ± 2.0%, MIC_PAO1_PA 80.0% ± 2.1%.
+
+19. **Shannon entropy improves classification for PAO1 targets** - Entropy features provide +6.5% improvement for MIC_PAO1 and +4.5% for MIC_PAO1_PA classification (robust across seeds).
+
+20. **Entropy has minimal impact on regression** - For MIC_SA (the only predictable target), entropy improves R² by only 0.018 (0.684→0.702).
+
+21. **XGBoost outperforms Ridge for weak signals** - For MIC_PAO1 and MIC_PAO1_PA, XGBoost shows weak but positive R² (0.12-0.18) while Ridge shows R² ≈ 0.
+
 ---
 
 ## Commands Reference
@@ -379,4 +464,10 @@ uv run python main.py --model logistic --features composition entropy combined -
 
 # Compare regression and classification models
 uv run python main.py --model logistic ridge --features entropy --target MIC_PAO1
+
+# Run with 5-fold cross-validation
+uv run python main.py --model logistic ridge --features entropy --target MIC_PAO1_PA --cv 5
+
+# Run comprehensive CV experiments
+uv run python main.py --model logistic ridge --features entropy combined composition --target MIC_PAO1 MIC_SA MIC_PAO1_PA --cv 5
 ```

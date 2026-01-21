@@ -4,9 +4,9 @@
 
 **Hypothesis**: The degree of randomization in monomer sequencing, encoded via Shannon Entropy, demonstrates predictive value for the Minimum Inhibitory Concentration (MIC) of antibacterial polymers.
 
-**Methods**: We compare neural networks, XGBoost, and Ridge regression using three feature sets: composition-based, entropy-based, and combined features. Models are evaluated on MIC prediction for three bacterial strains (PAO1, SA, PAO1_PA).
+**Methods**: We compare neural networks, XGBoost, Ridge regression, and Logistic regression using three feature sets: composition-based, entropy-based, and combined features. Models are evaluated on MIC prediction for three bacterial strains (PAO1, SA, PAO1_PA) using both single train/test splits and **5-fold stratified cross-validation** to obtain reliable performance estimates.
 
-**Key Findings**: Shannon Entropy features improve Ridge regression performance by 11.1% on average compared to composition-only features. The best model (Ridge + Combined) achieves R² = 0.755 for MIC_SA prediction. For MIC_PAO1_PA, entropy-only features outperform composition features across all models, with Ridge + Entropy achieving R² = 0.391. The small dataset size (111 samples) favors simpler linear models over neural networks.
+**Key Findings**: Robust cross-validation (5 seeds × 5-fold CV) reveals that only MIC_SA shows genuine regression predictive power (R² = 0.72 ± 0.02). Initial single-split results for MIC_PAO1 (R²=0.40) and MIC_PAO1_PA (R²=0.48) were highly inflated—robust CV shows R² = 0.12 and 0.18 respectively. Classification is more robust: Logistic regression achieves 80.9% ± 2.0% for MIC_PAO1, 80.0% ± 2.1% for MIC_PAO1_PA, and 93.9% ± 1.2% for MIC_SA. **Shannon entropy features improve classification accuracy by +4.5% to +6.5% for PAO1 targets**, but have minimal impact on regression (+0.018 R²).
 
 ---
 
@@ -89,9 +89,15 @@ Four entropy-based features were computed:
 
 ### 2.6 Evaluation Protocol
 
-- Train/Test split: 80/20 with stratification
-- 5-fold cross-validation for hyperparameter selection
-- Metrics: RMSE, MAE, R²
+**Initial Evaluation**:
+- Train/Test split: 80/20 with stratification (~88 train, ~23 test samples)
+- Metrics: RMSE, MAE, R² (regression); Accuracy, F1 macro/weighted (classification)
+
+**Cross-Validation** (Added after observing high variance):
+- 5-fold stratified cross-validation
+- For regression: stratification on binned target values
+- Reports mean ± standard deviation across folds
+- Reveals true generalization performance and result stability
 
 ---
 
@@ -248,6 +254,57 @@ After identifying that NMR, GPC, and Target molecular weight columns were unused
 
 **Key Finding**: Molecular weight features (Target, NMR, GPC) substantially improve prediction accuracy. The MIC_PAO1_PA target now achieves 95.7% classification accuracy with F1=0.886, demonstrating that polymer molecular weight is a critical predictor of antibacterial activity.
 
+### 3.7 Cross-Validation Results (Critical Update)
+
+Single train/test splits with only ~23 test samples showed high variance. We implemented **robust cross-validation**: 5-fold stratified CV repeated with 5 different random seeds (42, 123, 456, 789, 1000) for 25 total evaluations per configuration.
+
+#### Single-Split vs Robust Cross-Validation Comparison
+
+| Target | Task | Single-Split | Robust CV (5 seeds) | Status |
+|--------|------|--------------|---------------------|--------|
+| MIC_PAO1 | Regression | R²=0.402 | R²=0.12 ± 0.10 | **Highly Inflated** |
+| MIC_SA | Regression | R²=0.766 | R²=0.72 ± 0.02 | ✓ Reliable |
+| MIC_PAO1_PA | Regression | R²=0.484 | R²=0.18 ± 0.08 | **Highly Inflated** |
+| MIC_PAO1 | Classification | 91.3% | 80.9% ± 2.0% | Inflated |
+| MIC_SA | Classification | 91.3% | 93.9% ± 1.2% | ✓ Reliable |
+| MIC_PAO1_PA | Classification | 95.7% | 80.0% ± 2.1% | **Highly Inflated** |
+
+#### Cross-Validated Regression Results (Best Models)
+
+| Target | Model | Features | Mean R² | Std |
+|--------|-------|----------|---------|-----|
+| **MIC_SA** | Ridge | combined | **0.724** | 0.017 |
+| MIC_SA | XGBoost | combined | 0.707 | 0.043 |
+| MIC_SA | Ridge | entropy | 0.702 | 0.013 |
+| MIC_SA | Ridge | composition | 0.684 | 0.022 |
+| MIC_PAO1_PA | XGBoost | entropy | 0.183 | 0.079 |
+| MIC_PAO1 | XGBoost | combined | 0.118 | 0.099 |
+
+#### Cross-Validated Classification Results (Logistic Regression)
+
+| Target | Features | Mean Accuracy | Std | Entropy Benefit |
+|--------|----------|---------------|-----|-----------------|
+| MIC_SA | composition | **93.9%** | 1.2% | baseline |
+| MIC_SA | entropy | 93.7% | 0.5% | -0.2% |
+| **MIC_PAO1** | **entropy** | **80.9%** | 2.0% | **+6.5%** |
+| MIC_PAO1 | composition | 74.4% | 1.2% | baseline |
+| **MIC_PAO1_PA** | **entropy** | **80.0%** | 2.1% | **+4.5%** |
+| MIC_PAO1_PA | composition | 75.5% | 2.0% | baseline |
+
+**Key Findings from Robust Cross-Validation**:
+
+1. **MIC_SA is the only reliable regression target** - R² = 0.72 ± 0.02 is stable across seeds and represents genuine predictive power.
+
+2. **MIC_PAO1 and MIC_PAO1_PA regression is weak** - R² = 0.12-0.18 with high variance; these targets are difficult to predict quantitatively.
+
+3. **Classification is robust for all targets** - Accuracy ranges from 80-94% with low variance (1-2% std).
+
+4. **Shannon entropy improves PAO1 classification by +4-6%** - Entropy features provide consistent improvement for MIC_PAO1 (+6.5%) and MIC_PAO1_PA (+4.5%).
+
+5. **Entropy has no impact on MIC_SA** - Already at 94% accuracy with composition features; no room for improvement.
+
+6. **The 95.7% accuracy for MIC_PAO1_PA was a lucky split** - True robust accuracy is 80.0% ± 2.1%.
+
 ---
 
 ## 4. Discussion
@@ -294,18 +351,44 @@ The addition of logistic regression classification provides complementary insigh
 
 4. **F1 vs Accuracy gap**: The significant gap between accuracy and F1 macro scores (e.g., 91.3% vs 62.0% for MIC_SA) highlights that high accuracy can be misleading with imbalanced classes.
 
-### 4.4 Limitations
+### 4.4 Single-Split vs Cross-Validation: A Cautionary Tale
 
-1. **Small Dataset**: 111 samples limits deep learning potential
+The most important methodological finding from this study is the **dramatic difference between single-split and robustly cross-validated results**:
+
+| Target | Single-Split R² | Robust CV R² (5 seeds) | Inflation Factor |
+|--------|-----------------|------------------------|------------------|
+| MIC_PAO1 | 0.402 | 0.12 ± 0.10 | 3× inflated |
+| MIC_PAO1_PA | 0.484 | 0.18 ± 0.08 | 3× inflated |
+| MIC_SA | 0.766 | 0.72 ± 0.02 | 1.06× (reliable) |
+
+**Why did this happen?**
+
+1. **Small test set**: With only ~23 test samples, a single "lucky" split can dramatically overestimate performance.
+
+2. **High variance in weak signals**: MIC_PAO1 and MIC_PAO1_PA have weak underlying signals (R² = 0.12-0.18), making them susceptible to random fluctuations.
+
+3. **Target-specific predictability**: MIC_SA has genuine learnable structure (R² = 0.72 ± 0.02 across 5 seeds), while PAO1 variants have weaker relationships.
+
+**Implications**:
+
+- **Always use robust CV for small datasets**: Multiple seeds reveal true variance; single-seed CV can still be misleading.
+- **Classification is more stable**: Classification accuracy has ~2% std vs regression R² with ~10% std.
+- **Trust but verify**: Initial 95.7% accuracy was a lucky split—true robust accuracy is 80.0% ± 2.1%.
+
+### 4.5 Limitations
+
+1. **Small Dataset**: 111 samples limits deep learning potential and causes high variance in cross-validation
 2. **Censored Data**: Right-censored MIC values (">128") introduce uncertainty
 3. **Class Imbalance**: Many samples have high MIC (low activity), with MIC_SA having only 1 sample in the Low class
 4. **Fixed Binning Thresholds**: The 64/128 thresholds may not be optimal for all targets
+5. **Target Heterogeneity**: Different bacterial strains show vastly different predictability, suggesting different underlying mechanisms
 
-### 4.5 Future Directions
+### 4.6 Future Directions
 
-1. Incorporate cytotoxicity data for selectivity analysis
-2. Expand dataset through transfer learning or augmentation
-3. Explore attention mechanisms for sequence modeling
+1. Expand dataset to improve cross-validation stability
+2. Incorporate cytotoxicity data for selectivity analysis
+3. Investigate why MIC_SA is predictable while PAO1 variants are not
+4. Explore transfer learning from larger polymer datasets
 
 ---
 
@@ -313,41 +396,49 @@ The addition of logistic regression classification provides complementary insigh
 
 ### 5.1 Summary of Findings
 
-This study evaluated the predictive value of Shannon Entropy features and molecular weight features for antibacterial polymer MIC prediction across three bacterial strains using both regression and classification approaches. Key findings include:
+This study evaluated the predictive value of Shannon Entropy features for antibacterial polymer MIC prediction across three bacterial strains. **Critical: Results are reported using robust cross-validation (5 seeds × 5-fold CV = 25 evaluations per configuration).**
 
-1. **Best regression performance**: Ridge regression with combined features (including MW) achieved R² = 0.766 for MIC_SA, the highest predictive accuracy observed.
+Key findings include:
 
-2. **Best classification performance**: Logistic regression with entropy features achieves **95.7% accuracy** on MIC_PAO1_PA (F1=0.886) and 91.3% on MIC_PAO1/MIC_SA.
+1. **Only MIC_SA shows reliable regression performance**: Ridge regression achieves R² = 0.72 ± 0.02 for MIC_SA. This is the only target with genuine predictive power for continuous MIC prediction.
 
-3. **Molecular weight features are critical**: Adding Target, NMR, and GPC features improved R² by up to 58% and classification accuracy by up to 17.4%.
+2. **MIC_PAO1 and MIC_PAO1_PA regression is weak**: Robust CV shows R² = 0.12 ± 0.10 and R² = 0.18 ± 0.08 respectively—much weaker than single-split results suggested.
 
-4. **Entropy + MW is the winning combination**: For MIC_PAO1 and MIC_PAO1_PA, entropy features combined with molecular weight data consistently outperformed other feature sets.
+3. **Classification is robust for all targets**: Logistic regression achieves:
+   - MIC_SA: **93.9% ± 1.2%** accuracy
+   - MIC_PAO1: **80.9% ± 2.0%** accuracy
+   - MIC_PAO1_PA: **80.0% ± 2.1%** accuracy
 
-5. **Model selection matters**: Simple linear models (Ridge, Logistic) outperformed neural networks and XGBoost on this small dataset.
+4. **Shannon entropy improves classification for PAO1 targets**:
+   - MIC_PAO1: +6.5% (74.4% → 80.9%)
+   - MIC_PAO1_PA: +4.5% (75.5% → 80.0%)
+   - MIC_SA: no improvement (already at 94%)
 
-6. **Target variability**: MIC_SA was most predictable for regression, while MIC_PAO1_PA showed the most dramatic improvement with enhanced features (78.3% → 95.7% accuracy).
+5. **Entropy has minimal impact on regression**: For MIC_SA, entropy improves R² by only 0.018 (0.684 → 0.702).
 
-7. **Classification utility**: Categorical prediction now provides highly accurate screening capability (>90% for all targets with appropriate features).
+6. **The 95.7% accuracy was a lucky split**: Robust CV shows true MIC_PAO1_PA accuracy is 80.0% ± 2.1%.
 
 ### 5.2 Support/Refutation of Hypothesis
 
-**The hypothesis is partially supported.**
+**The hypothesis is partially supported for classification, not for regression.**
 
-Shannon Entropy features do demonstrate predictive value for MIC, particularly when used with Ridge regression. The randomness_score and composition_entropy features emerged as important predictors, confirming that sequence randomness information contributes to MIC prediction.
+Shannon Entropy features demonstrate consistent predictive value for MIC **classification** on PAO1 targets:
 
-However, the hypothesis that neural networks would capture non-linear entropy-MIC relationships was not supported. The dataset size limitation likely prevented neural networks from realizing their potential.
+- **Supported**: Entropy features improve classification accuracy by +4.5% to +6.5% for MIC_PAO1 and MIC_PAO1_PA (robust across 5 random seeds)
+- **Not supported for regression**: Entropy provides only +0.018 R² improvement for MIC_SA (the only predictable target)
+- **Not supported for MIC_SA classification**: Already saturated at 94% accuracy with composition features
 
 ### 5.3 Practical Implications
 
-1. **For polymer design**: Sequence entropy metrics combined with molecular weight data should be considered when designing antibacterial polymers. Higher molecular weight polymers with specific entropy profiles show predictable MIC patterns.
+1. **For MIC_SA prediction**: Ridge regression with combined features provides reliable predictions (R² = 0.72 ± 0.02). This can guide polymer synthesis decisions for *S. aureus* activity.
 
-2. **For computational prediction**: Ridge regression with entropy + MW features provides R² = 0.40-0.77 across targets, sufficient for guiding synthesis decisions.
+2. **For MIC_PAO1/PAO1_PA prediction**: Use classification with entropy features. Expect ~80% accuracy for Active/Moderate/Inactive categorization.
 
-3. **For drug screening**: Logistic regression classification now offers **>90% accuracy** for all targets with appropriate features, enabling reliable high-throughput screening pipelines.
+3. **For drug screening pipelines**: Classification at 80-94% accuracy enables useful high-throughput filtering. Entropy features are recommended for PAO1 targets.
 
-4. **For data collection**: Molecular weight measurements (NMR, GPC) should be prioritized in future datasets as they significantly improve predictive power.
+4. **For reporting ML results**: Always use robust CV (multiple seeds) for small datasets. Single-split and even single-seed CV can be misleading.
 
-5. **Feature engineering priority**: Combining domain knowledge (entropy metrics) with comprehensive measurements (MW data) yields the best results. Simple linear models remain effective when features are well-engineered.
+5. **Shannon entropy recommendation**: Include entropy features for classification tasks on Pseudomonas targets; they provide consistent +4-6% improvement.
 
 ---
 

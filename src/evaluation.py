@@ -17,6 +17,7 @@ from sklearn.metrics import (
     mean_squared_error,
     r2_score,
 )
+from sklearn.model_selection import StratifiedKFold
 
 
 @dataclass
@@ -35,6 +36,119 @@ class ExperimentResult:
     train_losses: Optional[list[float]] = None
     val_losses: Optional[list[float]] = None
     feature_importance: Optional[dict[str, float]] = None
+
+
+@dataclass
+class CVResult:
+    """Store results from cross-validation."""
+
+    experiment_id: str
+    model_type: str
+    feature_set: str
+    target: str
+    n_folds: int
+    is_classification: bool
+    # Mean and std for each metric
+    metrics_mean: dict[str, float]
+    metrics_std: dict[str, float]
+    # Per-fold metrics for detailed analysis
+    fold_metrics: list[dict[str, float]]
+
+
+def aggregate_cv_results(fold_metrics: list[dict[str, float]]) -> tuple[dict[str, float], dict[str, float]]:
+    """
+    Aggregate per-fold metrics into mean and std.
+
+    Args:
+        fold_metrics: List of metric dicts from each fold
+
+    Returns:
+        Tuple of (mean_dict, std_dict)
+    """
+    if not fold_metrics:
+        return {}, {}
+
+    # Get all metric keys from first fold
+    metric_keys = fold_metrics[0].keys()
+
+    means = {}
+    stds = {}
+    for key in metric_keys:
+        values = [m[key] for m in fold_metrics]
+        means[key] = np.mean(values)
+        stds[key] = np.std(values)
+
+    return means, stds
+
+
+def cross_validate_model(
+    model_fn,
+    X: np.ndarray,
+    y: np.ndarray,
+    n_splits: int = 5,
+    is_classification: bool = False,
+    random_state: int = 42,
+) -> tuple[dict[str, float], dict[str, float], list[dict[str, float]]]:
+    """
+    Perform stratified k-fold cross-validation.
+
+    Args:
+        model_fn: Function that returns a fresh model instance
+        X: Features array
+        y: Target array
+        n_splits: Number of CV folds (default 5)
+        is_classification: Whether this is classification task
+        random_state: Random seed for reproducibility
+
+    Returns:
+        Tuple of (metrics_mean, metrics_std, fold_metrics)
+    """
+    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
+
+    # For regression, stratify on binned y
+    if not is_classification:
+        # Use qcut with duplicates='drop' to handle repeated values
+        y_stratify = pd.qcut(y, q=min(n_splits, len(np.unique(y))), labels=False, duplicates='drop')
+    else:
+        y_stratify = y
+
+    fold_metrics = []
+    for fold_idx, (train_idx, test_idx) in enumerate(skf.split(X, y_stratify)):
+        model = model_fn()  # Fresh model each fold
+        X_train, X_test = X[train_idx], X[test_idx]
+        y_train, y_test = y[train_idx], y[test_idx]
+
+        # Create validation split from training data for models that need it
+        n_val = int(len(X_train) * 0.2)
+        val_indices = np.random.permutation(len(X_train))
+        val_idx_local, train_idx_local = val_indices[:n_val], val_indices[n_val:]
+
+        X_tr, X_val = X_train[train_idx_local], X_train[val_idx_local]
+        y_tr, y_val = y_train[train_idx_local], y_train[val_idx_local]
+
+        # Fit model
+        try:
+            # Try to fit with validation set (for NN, XGBoost)
+            model.fit(X_tr, y_tr, X_val, y_val)
+        except TypeError:
+            # Fall back to simple fit for sklearn models
+            model.fit(X_train, y_train)
+
+        # Predict
+        y_pred = model.predict(X_test)
+
+        # Calculate metrics
+        if is_classification:
+            metrics = calculate_classification_metrics(y_test, y_pred)
+        else:
+            metrics = calculate_metrics(y_test, y_pred)
+
+        fold_metrics.append(metrics)
+
+    # Aggregate results
+    metrics_mean, metrics_std = aggregate_cv_results(fold_metrics)
+
+    return metrics_mean, metrics_std, fold_metrics
 
 
 def calculate_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
