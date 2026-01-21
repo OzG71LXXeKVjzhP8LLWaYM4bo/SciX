@@ -315,7 +315,7 @@ The addition of logistic regression classification provides complementary insigh
 
 This study evaluated the predictive value of Shannon Entropy features and molecular weight features for antibacterial polymer MIC prediction across three bacterial strains using both regression and classification approaches. Key findings include:
 
-1. **Best regression performance**: Ridge regression with entropy features (including MW) achieved R² = 0.766 for MIC_SA, the highest predictive accuracy observed.
+1. **Best regression performance**: Ridge regression with combined features (including MW) achieved R² = 0.766 for MIC_SA, the highest predictive accuracy observed.
 
 2. **Best classification performance**: Logistic regression with entropy features achieves **95.7% accuracy** on MIC_PAO1_PA (F1=0.886) and 91.3% on MIC_PAO1/MIC_SA.
 
