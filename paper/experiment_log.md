@@ -83,9 +83,9 @@ These experiments treat MIC prediction as a 3-class classification problem:
 
 ## Detailed Experiment Records
 
-### Run 1: Initial Baseline
+### Run 1: Initial Baseline (Regression)
 
-**Date**: [To be filled]
+**Date**: 2026-01-21
 
 **Configuration**:
 ```bash
@@ -126,6 +126,43 @@ uv run python main.py --seed 42
 
 ---
 
+### Run 2: Logistic Regression Classification (E28-E36)
+
+**Date**: 2026-01-21
+
+**Configuration**:
+```bash
+uv run python main.py --model logistic --features composition entropy combined --target MIC_PAO1 MIC_SA MIC_PAO1_PA --seed 42
+```
+
+**Hyperparameters**:
+- Logistic Regression:
+  - C: 1.0 (regularization strength)
+  - max_iter: 1000
+  - solver: lbfgs
+  - Preprocessing: StandardScaler
+
+**MIC Binning Strategy**:
+- Class 0 (Low/Active): MIC ≤ 64
+- Class 1 (Medium/Moderate): 64 < MIC ≤ 128
+- Class 2 (High/Inactive): MIC > 128
+
+**Results**:
+- Total experiments: 9 (3 feature sets × 3 targets)
+- Best MIC_PAO1: composition features (Accuracy: 82.6%, F1: 0.683)
+- Best MIC_SA: all feature sets equal (Accuracy: 91.3%, F1: 0.620)
+- Best MIC_PAO1_PA: entropy features (Accuracy: 78.3%, F1: 0.527)
+
+**Observations**:
+1. Classification accuracy ranges from 65.2% to 91.3% across experiments
+2. Entropy features provide 20% relative improvement for MIC_PAO1_PA (65.2% → 78.3%)
+3. MIC_SA has extreme class imbalance (only 1 Low sample), inflating accuracy metrics
+4. F1 macro scores (0.29-0.68) reveal difficulty in minority class prediction
+5. Classification approach may be more practical for drug screening pipelines
+6. Confusion matrices saved to outputs/ directory for detailed error analysis
+
+---
+
 ## Hyperparameter Tuning Log
 
 ### NN Architecture Search
@@ -143,6 +180,14 @@ uv run python main.py --seed 42
 | 200 | 5 | 0.05 | - | Baseline |
 | 100 | 3 | 0.1 | - | Smaller |
 | 500 | 7 | 0.01 | - | Larger |
+
+### Logistic Regression Tuning
+
+| C | max_iter | Solver | Accuracy | Notes |
+|---|----------|--------|----------|-------|
+| 1.0 | 1000 | lbfgs | 82.6% | Baseline (MIC_PAO1) |
+| 0.1 | 1000 | lbfgs | - | More regularization |
+| 10.0 | 1000 | lbfgs | - | Less regularization |
 
 ---
 
@@ -168,7 +213,11 @@ uv run python main.py --seed 42
 
 ## Anomalies and Issues
 
-*Document any unexpected behaviors, errors, or edge cases encountered during experiments.*
+1. **MIC_SA Class Imbalance**: Only 1 sample (0.9%) in the Low class (MIC ≤ 64) makes this target effectively a 2-class problem. High accuracy (91.3%) is misleading; F1 macro (0.620) better reflects true performance.
+
+2. **sklearn API Change**: `multi_class` parameter was removed from LogisticRegression in recent sklearn versions. Code updated to remove this parameter.
+
+3. **Experiment ID Collision**: When running mixed regression/classification experiments, experiment IDs may not match between runs. Use feature set + model type + target as unique identifier.
 
 ---
 
