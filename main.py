@@ -6,211 +6,19 @@ for predicting Minimum Inhibitory Concentration (MIC) of antibacterial polymers.
 """
 
 import argparse
-from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from src.preprocessing import load_data, preprocess_data, split_data, get_base_features, bin_mic_values, MIC_CLASS_NAMES
+from src.preprocessing import load_data, preprocess_data, bin_mic_values
 from src.features import add_entropy_features, get_feature_sets
-from src.models import get_model, NeuralNetworkRegressor, XGBoostRegressor
+from src.models import get_model
 from src.evaluation import (
-    ExperimentResult,
     CVResult,
-    calculate_metrics,
-    calculate_classification_metrics,
     cross_validate_model,
-    generate_report,
-    save_results_csv,
-    plot_entropy_vs_mic,
-    plot_confusion_matrix,
+    plot_cv_model_comparison,
 )
-
-
-def run_experiment(
-    X_train: np.ndarray,
-    y_train: np.ndarray,
-    X_test: np.ndarray,
-    y_test: np.ndarray,
-    model_type: str,
-    feature_names: list[str],
-    experiment_id: str,
-    feature_set: str,
-    target: str,
-    verbose: bool = True,
-    is_classification: bool = False,
-) -> ExperimentResult:
-    """Run a single experiment and return results."""
-    input_dim = X_train.shape[1]
-
-    # Create model
-    model = get_model(model_type, input_dim=input_dim)
-
-    # Create validation split from training data
-    n_val = int(len(X_train) * 0.2)
-    indices = np.random.permutation(len(X_train))
-    val_idx, train_idx = indices[:n_val], indices[n_val:]
-
-    X_tr, X_val = X_train[train_idx], X_train[val_idx]
-    y_tr, y_val = y_train[train_idx], y_train[val_idx]
-
-    # Train model
-    if verbose:
-        print(f"\nTraining {model_type} on {feature_set} features for {target}...")
-
-    if model_type == "nn":
-        history = model.fit(
-            X_tr, y_tr, X_val, y_val,
-            epochs=200,
-            batch_size=16,
-            patience=30,
-            verbose=verbose,
-        )
-        train_losses = history.train_losses
-        val_losses = history.val_losses
-    else:
-        model.fit(
-            X_tr, y_tr, X_val, y_val,
-            feature_names=feature_names,
-            verbose=verbose,
-        )
-        train_losses = None
-        val_losses = None
-
-    # Predictions
-    y_pred = model.predict(X_test)
-
-    # Metrics - use classification or regression metrics
-    if is_classification:
-        metrics = calculate_classification_metrics(y_test, y_pred)
-        # Store classification metrics in regression fields for compatibility
-        result = ExperimentResult(
-            experiment_id=experiment_id,
-            model_type=model_type,
-            feature_set=feature_set,
-            target=target,
-            rmse=metrics["accuracy"],  # Store accuracy in rmse field
-            mae=metrics["f1_macro"],   # Store F1 macro in mae field
-            r2=metrics["f1_weighted"], # Store F1 weighted in r2 field
-            y_true=y_test,
-            y_pred=y_pred,
-            train_losses=train_losses,
-            val_losses=val_losses,
-            feature_importance=None,
-        )
-        if verbose:
-            print(f"  Accuracy: {metrics['accuracy']:.3f}, F1 (macro): {metrics['f1_macro']:.3f}, F1 (weighted): {metrics['f1_weighted']:.3f}")
-    else:
-        metrics = calculate_metrics(y_test, y_pred)
-
-        # Feature importance (for XGBoost)
-        feature_importance = None
-        if isinstance(model, XGBoostRegressor):
-            feature_importance = model.get_feature_importance()
-
-        result = ExperimentResult(
-            experiment_id=experiment_id,
-            model_type=model_type,
-            feature_set=feature_set,
-            target=target,
-            rmse=metrics["rmse"],
-            mae=metrics["mae"],
-            r2=metrics["r2"],
-            y_true=y_test,
-            y_pred=y_pred,
-            train_losses=train_losses,
-            val_losses=val_losses,
-            feature_importance=feature_importance,
-        )
-        if verbose:
-            print(f"  RMSE: {result.rmse:.2f}, MAE: {result.mae:.2f}, R2: {result.r2:.3f}")
-
-    return result
-
-
-def run_all_experiments(
-    df: pd.DataFrame,
-    targets: list[str] = None,
-    model_types: list[str] = None,
-    feature_sets: list[str] = None,
-    random_state: int = 42,
-    verbose: bool = True,
-) -> list[ExperimentResult]:
-    """Run the full experiment matrix."""
-    np.random.seed(random_state)
-
-    if targets is None:
-        targets = ["MIC_PAO1", "MIC_SA", "MIC_PAO1_PA"]
-
-    if model_types is None:
-        model_types = ["nn", "xgboost", "ridge"]
-
-    if feature_sets is None:
-        feature_sets = ["composition", "entropy", "combined"]
-
-    all_feature_sets = get_feature_sets()
-    results = []
-    experiment_counter = 1
-
-    for target in targets:
-        if verbose:
-            print(f"\n{'='*60}")
-            print(f"Target: {target}")
-            print(f"{'='*60}")
-
-        for feature_set_name in feature_sets:
-            feature_cols = all_feature_sets[feature_set_name]
-
-            # Check all features exist
-            missing = [f for f in feature_cols if f not in df.columns]
-            if missing:
-                print(f"Warning: Missing features {missing} for {feature_set_name}")
-                continue
-
-            # Split data
-            X_train, X_test, y_train, y_test = split_data(
-                df, target, feature_cols, random_state=random_state
-            )
-
-            # Convert to numpy
-            X_train_np = X_train.values
-            X_test_np = X_test.values
-            y_train_np = y_train.values
-            y_test_np = y_test.values
-
-            for model_type in model_types:
-                experiment_id = f"E{experiment_counter}_{model_type}_{feature_set_name}_{target}"
-
-                # Check if this is a classification model
-                is_classification = model_type == "logistic"
-
-                # Bin targets for classification
-                if is_classification:
-                    y_train_model = bin_mic_values(y_train_np)
-                    y_test_model = bin_mic_values(y_test_np)
-                else:
-                    y_train_model = y_train_np
-                    y_test_model = y_test_np
-
-                result = run_experiment(
-                    X_train_np,
-                    y_train_model,
-                    X_test_np,
-                    y_test_model,
-                    model_type=model_type,
-                    feature_names=feature_cols,
-                    experiment_id=experiment_id,
-                    feature_set=feature_set_name,
-                    target=target,
-                    verbose=verbose,
-                    is_classification=is_classification,
-                )
-
-                results.append(result)
-                experiment_counter += 1
-
-    return results
 
 
 def run_cv_experiments(
@@ -319,7 +127,9 @@ def run_cv_experiments(
 
 
 def print_cv_summary(results: list[CVResult], output_dir: Path) -> None:
-    """Print summary of cross-validation results."""
+    """Print summary of cross-validation results and generate plots."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     print("\n" + "="*60)
     print("CROSS-VALIDATION SUMMARY")
     print("="*60)
@@ -347,6 +157,18 @@ def print_cv_summary(results: list[CVResult], output_dir: Path) -> None:
                 high_var = " ⚠" if rmse_std > rmse * 0.1 else ""
                 print(f"  {r.model_type:8s} | {r.feature_set:12s} | RMSE: {rmse:5.2f} ± {rmse_std:4.2f} | R²: {r2:+.3f} ± {r2_std:.3f}{high_var}")
 
+            # Generate comparison plots for this target
+            plot_cv_model_comparison(
+                target_results,
+                metric="rmse",
+                save_path=output_dir / f"{target}_comparison_rmse.png",
+            )
+            plot_cv_model_comparison(
+                target_results,
+                metric="r2",
+                save_path=output_dir / f"{target}_comparison_r2.png",
+            )
+
     # Print classification results
     if classification_results:
         print("\n--- Classification Models ---")
@@ -365,6 +187,13 @@ def print_cv_summary(results: list[CVResult], output_dir: Path) -> None:
                 # Flag high variance
                 high_var = " ⚠" if acc_std > acc * 0.1 else ""
                 print(f"  {r.model_type:8s} | {r.feature_set:12s} | Acc: {acc:.3f} ± {acc_std:.3f} | F1: {f1:.3f} ± {f1_std:.3f}{high_var}")
+
+            # Generate comparison plots for this target
+            plot_cv_model_comparison(
+                target_results,
+                metric="accuracy",
+                save_path=output_dir / f"{target}_comparison_accuracy.png",
+            )
 
     # Best models
     print("\n" + "-"*60)
@@ -389,6 +218,7 @@ def print_cv_summary(results: list[CVResult], output_dir: Path) -> None:
     # Save CV results to CSV
     save_cv_results_csv(results, output_dir / "cv_results.csv")
     print(f"\nResults saved to {output_dir}/cv_results.csv")
+    print(f"Plots saved to {output_dir}/")
 
 
 def save_cv_results_csv(results: list[CVResult], path: Path) -> None:
@@ -460,8 +290,8 @@ def main():
     parser.add_argument(
         "--cv",
         type=int,
-        default=0,
-        help="Number of CV folds (0 = disable, use single split)",
+        default=5,
+        help="Number of CV folds (default: 5)",
     )
     parser.add_argument(
         "--quiet",
@@ -490,126 +320,20 @@ def main():
 
     output_dir = Path(args.output)
 
-    # Run experiments - use CV if --cv > 0, otherwise single split
-    if args.cv > 0:
-        print(f"\nRunning {args.cv}-fold cross-validation experiments...")
-        cv_results = run_cv_experiments(
-            df,
-            targets=args.target,
-            model_types=args.model,
-            feature_sets=args.features,
-            n_folds=args.cv,
-            random_state=args.seed,
-            verbose=not args.quiet,
-        )
+    # Run cross-validation experiments
+    print(f"\nRunning {args.cv}-fold cross-validation experiments...")
+    cv_results = run_cv_experiments(
+        df,
+        targets=args.target,
+        model_types=args.model,
+        feature_sets=args.features,
+        n_folds=args.cv,
+        random_state=args.seed,
+        verbose=not args.quiet,
+    )
 
-        # Print CV summary
-        print_cv_summary(cv_results, output_dir)
-
-    else:
-        # Original single-split experiments
-        print("\nRunning experiments (single split)...")
-        results = run_all_experiments(
-            df,
-            targets=args.target,
-            model_types=args.model,
-            feature_sets=args.features,
-            random_state=args.seed,
-            verbose=not args.quiet,
-        )
-
-        # Generate report
-        print(f"\nGenerating report in {output_dir}...")
-        generate_report(results, output_dir)
-
-        # Print summary
-        print("\n" + "="*60)
-        print("EXPERIMENT SUMMARY")
-        print("="*60)
-
-        # Separate classification and regression results
-        classification_results = [r for r in results if r.model_type == "logistic"]
-        regression_results = [r for r in results if r.model_type != "logistic"]
-
-        # Group regression results by target
-        if regression_results:
-            print("\n--- Regression Models ---")
-            for target in set(r.target for r in regression_results):
-                print(f"\n{target}:")
-                target_results = [r for r in regression_results if r.target == target]
-                target_results.sort(key=lambda x: x.rmse)
-
-                for r in target_results:
-                    print(f"  {r.model_type:8s} | {r.feature_set:12s} | RMSE: {r.rmse:6.2f} | R2: {r.r2:+.3f}")
-
-        # Group classification results by target
-        if classification_results:
-            print("\n--- Classification Models (Logistic) ---")
-            for target in set(r.target for r in classification_results):
-                print(f"\n{target} (3-class: Low/Medium/High):")
-                target_results = [r for r in classification_results if r.target == target]
-                # Sort by accuracy (stored in rmse field), descending
-                target_results.sort(key=lambda x: x.rmse, reverse=True)
-
-                for r in target_results:
-                    # rmse=accuracy, mae=f1_macro, r2=f1_weighted
-                    print(f"  {r.model_type:8s} | {r.feature_set:12s} | Acc: {r.rmse:.3f} | F1: {r.mae:.3f}")
-
-            # Save confusion matrices for classification
-            for r in classification_results:
-                plot_confusion_matrix(
-                    r.y_true,
-                    r.y_pred,
-                    class_names=MIC_CLASS_NAMES,
-                    title=f"Confusion Matrix: {r.model_type} - {r.feature_set} - {r.target}",
-                    save_path=output_dir / f"{r.experiment_id}_confusion_matrix.png",
-                )
-
-        # Best overall
-        print("\n" + "-"*60)
-        print("Best models by target:")
-
-        if regression_results:
-            for target in set(r.target for r in regression_results):
-                target_results = [r for r in regression_results if r.target == target]
-                best = min(target_results, key=lambda x: x.rmse)
-                print(f"  {target} (regression): {best.model_type} + {best.feature_set} (RMSE: {best.rmse:.2f})")
-
-        if classification_results:
-            for target in set(r.target for r in classification_results):
-                target_results = [r for r in classification_results if r.target == target]
-                best = max(target_results, key=lambda x: x.rmse)  # Higher accuracy is better
-                print(f"  {target} (classification): {best.model_type} + {best.feature_set} (Accuracy: {best.rmse:.3f})")
-
-        # Entropy vs Composition comparison (only for regression)
-        if regression_results:
-            print("\n" + "-"*60)
-            print("Entropy vs Composition (average RMSE improvement):")
-            for model in set(r.model_type for r in regression_results):
-                comp_results = [r for r in regression_results if r.model_type == model and r.feature_set == "composition"]
-                ent_results = [r for r in regression_results if r.model_type == model and r.feature_set == "entropy"]
-
-                if comp_results and ent_results:
-                    comp_rmse = np.mean([r.rmse for r in comp_results])
-                    ent_rmse = np.mean([r.rmse for r in ent_results])
-                    improvement = (comp_rmse - ent_rmse) / comp_rmse * 100
-                    better = "entropy" if improvement > 0 else "composition"
-                    print(f"  {model:8s}: {better} is better by {abs(improvement):.1f}%")
-
-        # Entropy vs Composition comparison (for classification - use accuracy)
-        if classification_results:
-            print("\nEntropy vs Composition (average accuracy comparison - classification):")
-            comp_results = [r for r in classification_results if r.feature_set == "composition"]
-            ent_results = [r for r in classification_results if r.feature_set == "entropy"]
-
-            if comp_results and ent_results:
-                comp_acc = np.mean([r.rmse for r in comp_results])
-                ent_acc = np.mean([r.rmse for r in ent_results])
-                improvement = (ent_acc - comp_acc) / comp_acc * 100
-                better = "entropy" if improvement > 0 else "composition"
-                print(f"  logistic : {better} is better by {abs(improvement):.1f}%")
-
-        print(f"\nResults saved to {output_dir}/")
+    # Print CV summary and generate plots
+    print_cv_summary(cv_results, output_dir)
 
 
 if __name__ == "__main__":

@@ -4,9 +4,9 @@
 
 **Hypothesis**: The degree of randomization in monomer sequencing, encoded via Shannon Entropy, demonstrates predictive value for the Minimum Inhibitory Concentration (MIC) of antibacterial polymers.
 
-**Methods**: We compare neural networks, XGBoost, Ridge regression, and Logistic regression using three feature sets: composition-based, entropy-based, and combined features. Models are evaluated on MIC prediction for three bacterial strains (PAO1, SA, PAO1_PA) using robust 5-fold stratified cross-validation with 5 random seeds.
+**Methods**: We compare Neural Networks, XGBoost, Ridge regression, and Logistic regression using three feature sets: composition-based, entropy-based, and combined features. Models are evaluated on MIC prediction for three bacterial strains (PAO1, SA, PAO1_PA) using 5-fold stratified cross-validation.
 
-**Key Findings**: Shannon entropy features improve classification accuracy by +4.5% to +6.5% for Pseudomonas targets (MIC_PAO1: 74.4%→80.9%, MIC_PAO1_PA: 75.5%→80.0%). MIC_SA achieves the highest predictability with 93.9% classification accuracy and R²=0.72 for regression. Entropy has minimal impact on regression performance (+0.018 R²). Classification provides more robust predictions than regression for this small dataset (111 samples).
+**Key Findings**: Shannon entropy features improve classification accuracy by +4.5% to +5.4% for Pseudomonas targets (MIC_PAO1: 74.8%→80.2%, MIC_PAO1_PA: 73.9%→78.4%). MIC_SA achieves the highest predictability with 95.5% classification accuracy and R²=0.74 for regression. Entropy does not improve regression performance. Classification provides more robust predictions than regression for this small dataset (111 samples). Neural networks underperform traditional ML models due to limited data.
 
 ---
 
@@ -93,7 +93,7 @@ Four entropy-based features were computed:
 
 ### 2.6 Evaluation Protocol
 
-- **Robust Cross-Validation**: 5-fold stratified CV with 5 random seeds (25 total evaluations per configuration)
+- **Cross-Validation**: 5-fold stratified CV
 - **Regression Metrics**: RMSE, MAE, R²
 - **Classification Metrics**: Accuracy, F1 macro, F1 weighted
 - **MIC Classes**: Low (≤64), Medium (64-128), High (>128)
@@ -106,28 +106,29 @@ Four entropy-based features were computed:
 
 | Target | Features | Accuracy | Std | F1 Macro |
 |--------|----------|----------|-----|----------|
-| **MIC_SA** | composition | **93.9%** | 1.2% | 0.87 |
-| MIC_SA | entropy | 93.7% | 0.5% | 0.84 |
-| MIC_SA | combined | 93.7% | 0.6% | 0.85 |
-| **MIC_PAO1** | **entropy** | **80.9%** | 2.0% | 0.63 |
-| MIC_PAO1 | combined | 79.5% | 3.7% | 0.59 |
-| MIC_PAO1 | composition | 74.4% | 1.2% | 0.52 |
-| **MIC_PAO1_PA** | **entropy** | **80.0%** | 2.1% | 0.61 |
-| MIC_PAO1_PA | combined | 78.9% | 1.2% | 0.60 |
-| MIC_PAO1_PA | composition | 75.5% | 2.0% | 0.54 |
+| **MIC_SA** | **composition** | **95.5%** | 4.1% | 0.88 |
+| MIC_SA | entropy | 93.7% | 5.4% | 0.81 |
+| MIC_SA | combined | 93.7% | 5.4% | 0.85 |
+| **MIC_PAO1** | **entropy** | **80.2%** | 3.5% | 0.62 |
+| MIC_PAO1 | combined | 78.4% | 3.4% | 0.59 |
+| MIC_PAO1 | composition | 74.8% | 4.3% | 0.55 |
+| **MIC_PAO1_PA** | **entropy** | **78.4%** | 5.1% | 0.57 |
+| MIC_PAO1_PA | combined | 78.3% | 3.6% | 0.60 |
+| MIC_PAO1_PA | composition | 73.9% | 5.0% | 0.52 |
 
 ### 3.2 Regression Performance
 
 | Target | Model | Features | R² | Std |
 |--------|-------|----------|-----|-----|
-| **MIC_SA** | Ridge | combined | **0.724** | 0.017 |
-| MIC_SA | XGBoost | combined | 0.707 | 0.043 |
-| MIC_SA | Ridge | entropy | 0.702 | 0.013 |
-| MIC_SA | Ridge | composition | 0.684 | 0.022 |
-| MIC_PAO1_PA | XGBoost | entropy | 0.183 | 0.079 |
-| MIC_PAO1_PA | XGBoost | combined | 0.131 | 0.045 |
-| MIC_PAO1 | XGBoost | combined | 0.118 | 0.099 |
-| MIC_PAO1 | XGBoost | entropy | 0.086 | 0.083 |
+| **MIC_SA** | XGBoost | composition | **0.739** | 0.098 |
+| MIC_SA | XGBoost | combined | 0.722 | 0.164 |
+| MIC_SA | XGBoost | entropy | 0.713 | 0.206 |
+| MIC_SA | Ridge | combined | 0.697 | 0.134 |
+| MIC_SA | Ridge | composition | 0.689 | 0.110 |
+| MIC_SA | Ridge | entropy | 0.684 | 0.155 |
+| MIC_SA | NN | entropy | 0.544 | 0.158 |
+| MIC_PAO1 | XGBoost | entropy | 0.065 | 0.404 |
+| MIC_PAO1_PA | XGBoost | combined | 0.061 | 0.341 |
 
 ### 3.3 Shannon Entropy Impact
 
@@ -135,17 +136,16 @@ Four entropy-based features were computed:
 
 | Target | Composition | Entropy | Improvement |
 |--------|-------------|---------|-------------|
-| MIC_PAO1 | 74.4% | 80.9% | **+6.5%** |
-| MIC_PAO1_PA | 75.5% | 80.0% | **+4.5%** |
-| MIC_SA | 93.9% | 93.7% | -0.2% |
+| MIC_PAO1 | 74.8% | 80.2% | **+5.4%** |
+| MIC_PAO1_PA | 73.9% | 78.4% | **+4.5%** |
+| MIC_SA | 95.5% | 93.7% | -1.8% |
 
 #### Regression (MIC_SA only)
 
-| Features | R² |
-|----------|-----|
-| Composition | 0.684 |
-| Entropy | 0.702 |
-| **Improvement** | **+0.018** |
+| Model | Composition R² | Entropy R² | Improvement |
+|-------|----------------|------------|-------------|
+| XGBoost | 0.739 | 0.713 | -0.026 |
+| Ridge | 0.689 | 0.684 | -0.005 |
 
 ### 3.4 Model Comparison
 
@@ -153,13 +153,14 @@ Four entropy-based features were computed:
 
 | Target | Task | Best Model | Performance |
 |--------|------|------------|-------------|
-| MIC_SA | Regression | Ridge + combined | R² = 0.724 ± 0.017 |
-| MIC_SA | Classification | Logistic + composition | 93.9% ± 1.2% |
-| MIC_PAO1 | Classification | Logistic + entropy | 80.9% ± 2.0% |
-| MIC_PAO1_PA | Classification | Logistic + entropy | 80.0% ± 2.1% |
+| MIC_SA | Regression | XGBoost + composition | R² = 0.739 ± 0.098 |
+| MIC_SA | Classification | Logistic + composition | 95.5% ± 4.1% |
+| MIC_PAO1 | Classification | Logistic + entropy | 80.2% ± 3.5% |
+| MIC_PAO1_PA | Classification | Logistic + entropy | 78.4% ± 5.1% |
 
 **Key Observations**:
-- Ridge and XGBoost outperform neural networks on this small dataset
+- XGBoost and Ridge outperform neural networks on this small dataset
+- Neural networks show R² = 0.36-0.54 vs XGBoost/Ridge R² = 0.68-0.74 for MIC_SA
 - Classification provides more stable predictions than regression
 - MIC_SA is the most predictable target for both tasks
 
@@ -170,33 +171,34 @@ Four entropy-based features were computed:
 ### 4.1 Shannon Entropy Improves Classification for Pseudomonas Targets
 
 Entropy features provide consistent improvement for classification on PAO1 targets:
-- **MIC_PAO1**: +6.5% accuracy improvement (74.4% → 80.9%)
-- **MIC_PAO1_PA**: +4.5% accuracy improvement (75.5% → 80.0%)
+- **MIC_PAO1**: +5.4% accuracy improvement (74.8% → 80.2%)
+- **MIC_PAO1_PA**: +4.5% accuracy improvement (73.9% → 78.4%)
 
 This suggests that sequence randomness information helps distinguish active from inactive polymers against Pseudomonas aeruginosa strains.
 
 ### 4.2 MIC_SA is Highly Predictable
 
 MIC_SA shows the strongest predictability:
-- **Classification**: 93.9% accuracy with low variance (±1.2%)
-- **Regression**: R² = 0.724 with low variance (±0.017)
+- **Classification**: 95.5% accuracy (composition features)
+- **Regression**: R² = 0.739 with XGBoost
 
-Entropy features do not improve MIC_SA predictions, likely because composition features already capture the relevant information for Staphylococcus aureus activity.
+Entropy features do not improve MIC_SA predictions (-1.8% for classification), likely because composition features already capture the relevant information for Staphylococcus aureus activity.
 
 ### 4.3 Regression vs Classification
 
 Classification outperforms regression for practical utility:
-- All targets achieve 80-94% classification accuracy
-- Regression only works well for MIC_SA (R² = 0.72)
-- MIC_PAO1 and MIC_PAO1_PA regression shows weak predictability (R² = 0.1-0.2)
+- All targets achieve 78-96% classification accuracy
+- Regression only works well for MIC_SA (R² = 0.74)
+- MIC_PAO1 and MIC_PAO1_PA regression shows weak predictability (R² < 0.1)
 
 For drug screening applications, classification into Active/Moderate/Inactive categories is sufficient and more reliable.
 
 ### 4.4 Model Selection
 
-Simple linear models (Ridge, Logistic) perform comparably or better than complex models (NN, XGBoost) on this dataset:
+XGBoost and Ridge perform comparably and outperform neural networks on this dataset:
 - Small sample size (111) limits deep learning potential
-- Ridge regression achieves the best regression performance
+- Neural networks achieve R² = 0.36-0.54 vs XGBoost/Ridge R² = 0.68-0.74 for MIC_SA
+- XGBoost achieves the best regression performance
 - Logistic regression provides stable classification across all targets
 
 ### 4.5 Limitations
@@ -212,35 +214,34 @@ Simple linear models (Ridge, Logistic) perform comparably or better than complex
 
 ### 5.1 Summary of Findings
 
-1. **Shannon entropy improves classification for Pseudomonas targets**: +6.5% for MIC_PAO1 and +4.5% for MIC_PAO1_PA
+1. **Shannon entropy improves classification for Pseudomonas targets**: +5.4% for MIC_PAO1 and +4.5% for MIC_PAO1_PA
 
-2. **MIC_SA is the most predictable target**: 93.9% classification accuracy and R² = 0.72 for regression
+2. **MIC_SA is the most predictable target**: 95.5% classification accuracy and R² = 0.74 for regression
 
-3. **Classification is more robust than regression**: All targets achieve 80-94% classification accuracy
+3. **Classification is more robust than regression**: All targets achieve 78-96% classification accuracy
 
-4. **Entropy has minimal impact on regression**: Only +0.018 R² improvement for MIC_SA
+4. **Entropy does not improve regression**: Composition features perform equally or better
 
-5. **Simple models perform best**: Ridge and Logistic regression outperform neural networks
+5. **XGBoost and Ridge outperform neural networks**: Small dataset size limits deep learning potential
 
 ### 5.2 Hypothesis Evaluation
 
 **The hypothesis is supported for classification on Pseudomonas targets.**
 
 Shannon Entropy features demonstrate consistent predictive value for MIC classification:
-- +4.5% to +6.5% accuracy improvement for PAO1 targets
-- Robust across 5 random seeds
+- +4.5% to +5.4% accuracy improvement for PAO1 targets
 
-Entropy features do not significantly improve regression or MIC_SA classification (already saturated at 94%).
+Entropy features do not improve regression or MIC_SA classification (composition already achieves 95.5%).
 
 ### 5.3 Practical Recommendations
 
-1. **For MIC_SA prediction**: Use Ridge regression with combined features (R² = 0.72)
+1. **For MIC_SA prediction**: Use XGBoost with composition features (R² = 0.74) or Logistic classification (95.5%)
 
-2. **For MIC_PAO1/PAO1_PA prediction**: Use Logistic classification with entropy features (~80% accuracy)
+2. **For MIC_PAO1/PAO1_PA prediction**: Use Logistic classification with entropy features (~78-80% accuracy)
 
-3. **For drug screening**: Classification at 80-94% accuracy enables effective high-throughput filtering
+3. **For drug screening**: Classification at 78-96% accuracy enables effective high-throughput filtering
 
-4. **Feature recommendation**: Include entropy features for Pseudomonas targets; they provide consistent +4-6% improvement
+4. **Feature recommendation**: Include entropy features for Pseudomonas targets; they provide consistent +4-5% improvement
 
 ---
 

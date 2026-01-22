@@ -370,6 +370,82 @@ def plot_model_comparison(
     return fig
 
 
+def plot_cv_model_comparison(
+    results: list["CVResult"],
+    metric: str = "rmse",
+    save_path: Optional[str | Path] = None,
+) -> plt.Figure:
+    """Compare models across feature sets with error bars for CV results."""
+    # Filter results for the appropriate task type
+    if metric in ["accuracy", "f1_macro", "f1_weighted"]:
+        results = [r for r in results if r.is_classification]
+    else:
+        results = [r for r in results if not r.is_classification]
+
+    if not results:
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ax.text(0.5, 0.5, f"No data for metric: {metric}", ha='center', va='center')
+        return fig
+
+    # Create comparison dataframe
+    data = []
+    for r in results:
+        row = {
+            "Model": r.model_type.upper(),
+            "Feature Set": r.feature_set.title(),
+        }
+        # Add all metrics
+        for key, val in r.metrics_mean.items():
+            row[key] = val
+            row[f"{key}_std"] = r.metrics_std.get(key, 0)
+        data.append(row)
+    df = pd.DataFrame(data)
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    feature_sets = sorted(df["Feature Set"].unique())
+    x = np.arange(len(feature_sets))
+    width = 0.2
+
+    models = sorted(df["Model"].unique())
+    colors = plt.cm.Set2(np.linspace(0, 1, len(models)))
+
+    for i, model in enumerate(models):
+        model_data = df[df["Model"] == model]
+        values = []
+        errors = []
+        for fs in feature_sets:
+            fs_data = model_data[model_data["Feature Set"] == fs]
+            if len(fs_data) > 0:
+                values.append(fs_data[metric].values[0])
+                errors.append(fs_data[f"{metric}_std"].values[0])
+            else:
+                values.append(0)
+                errors.append(0)
+
+        ax.bar(x + i * width, values, width, label=model, alpha=0.8,
+               color=colors[i], yerr=errors, capsize=3)
+
+    ax.set_xlabel("Feature Set", fontsize=12)
+    metric_label = metric.upper() if metric not in ["r2", "accuracy"] else {"r2": "R²", "accuracy": "Accuracy"}[metric]
+    ax.set_ylabel(metric_label, fontsize=12)
+    ax.set_title(f"Model Comparison: {metric_label} (with CV std)", fontsize=14)
+    ax.set_xticks(x + width * (len(models) - 1) / 2)
+    ax.set_xticklabels(feature_sets)
+    ax.legend(fontsize=10)
+    ax.grid(True, axis="y", alpha=0.3)
+
+    plt.tight_layout()
+
+    if save_path:
+        save_path = Path(save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+
+    return fig
+
+
 def plot_entropy_vs_mic(
     df: pd.DataFrame,
     entropy_col: str,
