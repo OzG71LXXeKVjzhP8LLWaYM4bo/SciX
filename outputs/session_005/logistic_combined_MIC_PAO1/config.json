@@ -1,0 +1,25 @@
+{
+  "model_type": "logistic",
+  "feature_set": "combined",
+  "feature_columns": [
+    "Number of blocks",
+    "dpn",
+    "Dispersity",
+    "cLogP_predicted",
+    "Target",
+    "NMR",
+    "GPC",
+    "composition_A",
+    "composition_B1",
+    "composition_B2",
+    "composition_C",
+    "composition_entropy",
+    "block_entropy",
+    "sequence_entropy",
+    "randomness_score"
+  ],
+  "target": "MIC_PAO1",
+  "n_folds": 5,
+  "random_state": 1000,
+  "is_classification": true
+}

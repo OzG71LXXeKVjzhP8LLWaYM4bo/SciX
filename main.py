@@ -18,11 +18,26 @@ from src.evaluation import (
     CVResult,
     cross_validate_model,
     plot_cv_model_comparison,
+    plot_predictions,
+    plot_residuals,
+    plot_learning_curves,
+    plot_feature_importance,
+    plot_confusion_matrix,
+)
+from src.output_utils import (
+    create_experiment_folder,
+    create_session_folder,
+    save_experiment_config,
+    save_fold_metrics,
+    save_predictions,
+    save_experiment_summary,
+    update_aggregate_results,
 )
 
 
 def run_cv_experiments(
     df: pd.DataFrame,
+    session_dir: Path,
     targets: list[str] = None,
     model_types: list[str] = None,
     feature_sets: list[str] = None,
@@ -44,7 +59,6 @@ def run_cv_experiments(
 
     all_feature_sets = get_feature_sets()
     results = []
-    experiment_counter = 1
 
     for target in targets:
         if verbose:
@@ -66,7 +80,7 @@ def run_cv_experiments(
             y_raw = df[target].values
 
             for model_type in model_types:
-                experiment_id = f"CV{experiment_counter}_{model_type}_{feature_set_name}_{target}"
+                experiment_id = f"{model_type}_{feature_set_name}_{target}"
                 is_classification = model_type == "logistic"
 
                 # Prepare y (bin for classification)
@@ -84,13 +98,14 @@ def run_cv_experiments(
                     return get_model(mt, input_dim=dim)
 
                 # Run cross-validation
-                metrics_mean, metrics_std, fold_metrics = cross_validate_model(
+                metrics_mean, metrics_std, fold_metrics, fold_data = cross_validate_model(
                     model_fn=make_model,
                     X=X,
                     y=y,
                     n_splits=n_folds,
                     is_classification=is_classification,
                     random_state=random_state,
+                    feature_names=feature_cols,
                 )
 
                 result = CVResult(
@@ -104,6 +119,99 @@ def run_cv_experiments(
                     metrics_std=metrics_std,
                     fold_metrics=fold_metrics,
                 )
+
+                # Save individual experiment results
+                exp_folder = create_experiment_folder(
+                    session_dir, model_type, feature_set_name, target
+                )
+
+                # Save config
+                config = {
+                    "model_type": model_type,
+                    "feature_set": feature_set_name,
+                    "feature_columns": feature_cols,
+                    "target": target,
+                    "n_folds": n_folds,
+                    "random_state": random_state,
+                    "is_classification": is_classification,
+                }
+                save_experiment_config(exp_folder, config)
+
+                # Save fold metrics and predictions
+                save_fold_metrics(exp_folder, fold_metrics)
+                save_predictions(exp_folder, fold_data)
+                save_experiment_summary(exp_folder, result)
+
+                # Generate plots
+                # Combine all fold predictions for aggregate plots
+                all_y_true = []
+                all_y_pred = []
+                for fd in fold_data:
+                    all_y_true.extend(fd["y_true"])
+                    all_y_pred.extend(fd["y_pred"])
+                all_y_true = np.array(all_y_true)
+                all_y_pred = np.array(all_y_pred)
+
+                if not is_classification:
+                    # Actual vs Predicted plot
+                    plot_predictions(
+                        all_y_true, all_y_pred,
+                        title=f"{model_type.upper()} - {feature_set_name} - {target}",
+                        save_path=exp_folder / "plots" / "actual_vs_predicted.png"
+                    )
+                    # Residuals plot
+                    plot_residuals(
+                        all_y_true, all_y_pred,
+                        title=f"Residuals: {model_type.upper()} - {feature_set_name}",
+                        save_path=exp_folder / "plots" / "residuals.png"
+                    )
+                else:
+                    # Confusion matrix for classification
+                    mic_class_names = ["Low (≤64)", "Medium (64-128)", "High (>128)"]
+                    plot_confusion_matrix(
+                        all_y_true, all_y_pred,
+                        class_names=mic_class_names,
+                        title=f"Confusion Matrix: {model_type.upper()} - {feature_set_name}",
+                        save_path=exp_folder / "plots" / "confusion_matrix.png"
+                    )
+
+                # Learning curves for NN models (use first fold with data)
+                for fd in fold_data:
+                    if fd.get("train_losses"):
+                        plot_learning_curves(
+                            fd["train_losses"], fd["val_losses"],
+                            title=f"Learning Curves: {model_type.upper()} - {feature_set_name}",
+                            save_path=exp_folder / "plots" / "learning_curve.png"
+                        )
+                        break
+
+                # Feature importance for XGBoost/Ridge
+                for fd in fold_data:
+                    if fd.get("feature_importance"):
+                        importance = fd["feature_importance"]
+                        # Convert numpy arrays to floats if needed (for Ridge coefficients)
+                        if importance:
+                            clean_importance = {}
+                            for k, v in importance.items():
+                                if isinstance(v, np.ndarray):
+                                    # For multi-class classifiers, take mean of abs coefficients
+                                    clean_importance[k] = float(np.mean(np.abs(v)))
+                                elif isinstance(v, list):
+                                    clean_importance[k] = float(np.mean(np.abs(v)))
+                                elif hasattr(v, 'item'):
+                                    clean_importance[k] = float(v.item())
+                                else:
+                                    clean_importance[k] = float(v)
+                            plot_feature_importance(
+                                clean_importance,
+                                title=f"Feature Importance: {model_type.upper()}",
+                                save_path=exp_folder / "plots" / "feature_importance.png"
+                            )
+                        break
+
+                # Close all figures to free memory
+                import matplotlib.pyplot as plt
+                plt.close("all")
 
                 # Print results
                 if verbose:
@@ -121,7 +229,6 @@ def run_cv_experiments(
                         print(f"  RMSE: {rmse:.2f} ± {rmse_std:.2f} | R²: {r2:.3f} ± {r2_std:.3f}")
 
                 results.append(result)
-                experiment_counter += 1
 
     return results
 
@@ -129,6 +236,8 @@ def run_cv_experiments(
 def print_cv_summary(results: list[CVResult], output_dir: Path) -> None:
     """Print summary of cross-validation results and generate plots."""
     output_dir.mkdir(parents=True, exist_ok=True)
+    aggregate_plots_dir = output_dir / "aggregate_plots"
+    aggregate_plots_dir.mkdir(parents=True, exist_ok=True)
 
     print("\n" + "="*60)
     print("CROSS-VALIDATION SUMMARY")
@@ -161,12 +270,12 @@ def print_cv_summary(results: list[CVResult], output_dir: Path) -> None:
             plot_cv_model_comparison(
                 target_results,
                 metric="rmse",
-                save_path=output_dir / f"{target}_comparison_rmse.png",
+                save_path=aggregate_plots_dir / f"{target}_comparison_rmse.png",
             )
             plot_cv_model_comparison(
                 target_results,
                 metric="r2",
-                save_path=output_dir / f"{target}_comparison_r2.png",
+                save_path=aggregate_plots_dir / f"{target}_comparison_r2.png",
             )
 
     # Print classification results
@@ -192,7 +301,7 @@ def print_cv_summary(results: list[CVResult], output_dir: Path) -> None:
             plot_cv_model_comparison(
                 target_results,
                 metric="accuracy",
-                save_path=output_dir / f"{target}_comparison_accuracy.png",
+                save_path=aggregate_plots_dir / f"{target}_comparison_accuracy.png",
             )
 
     # Best models
@@ -215,10 +324,10 @@ def print_cv_summary(results: list[CVResult], output_dir: Path) -> None:
             acc_std = best.metrics_std.get("accuracy", 0)
             print(f"  {target} (classification): {best.model_type} + {best.feature_set} (Acc: {acc:.3f} ± {acc_std:.3f})")
 
-    # Save CV results to CSV
-    save_cv_results_csv(results, output_dir / "cv_results.csv")
-    print(f"\nResults saved to {output_dir}/cv_results.csv")
-    print(f"Plots saved to {output_dir}/")
+    # Print paths (aggregate results are updated separately in main())
+    print(f"\nAggregate results saved to {output_dir}/aggregate_results_detailed.csv")
+    print(f"Aggregate summary saved to {output_dir}/aggregate_results_summary.csv")
+    print(f"Comparison plots saved to {output_dir}/aggregate_plots/")
 
 
 def save_cv_results_csv(results: list[CVResult], path: Path) -> None:
@@ -320,10 +429,15 @@ def main():
 
     output_dir = Path(args.output)
 
+    # Create session folder for this run
+    session_dir, session_num = create_session_folder(output_dir)
+    print(f"\nCreated session folder: {session_dir}")
+
     # Run cross-validation experiments
     print(f"\nRunning {args.cv}-fold cross-validation experiments...")
     cv_results = run_cv_experiments(
         df,
+        session_dir=session_dir,
         targets=args.target,
         model_types=args.model,
         feature_sets=args.features,
@@ -331,6 +445,10 @@ def main():
         random_state=args.seed,
         verbose=not args.quiet,
     )
+
+    # Update aggregate results with this session's data
+    print(f"\nUpdating aggregate results...")
+    update_aggregate_results(output_dir, cv_results, session_num)
 
     # Print CV summary and generate plots
     print_cv_summary(cv_results, output_dir)

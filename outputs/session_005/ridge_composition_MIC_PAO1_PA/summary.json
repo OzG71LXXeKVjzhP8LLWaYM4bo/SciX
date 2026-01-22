@@ -1,0 +1,18 @@
+{
+  "experiment_id": "ridge_composition_MIC_PAO1_PA",
+  "model_type": "ridge",
+  "feature_set": "composition",
+  "target": "MIC_PAO1_PA",
+  "n_folds": 5,
+  "is_classification": false,
+  "metrics_mean": {
+    "rmse": 57.66004313823127,
+    "mae": 36.655959354944564,
+    "r2": -0.13400522390563557
+  },
+  "metrics_std": {
+    "rmse": 11.816048659297593,
+    "mae": 8.84079638323714,
+    "r2": 0.3306207419006629
+  }
+}

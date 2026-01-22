@@ -1,0 +1,18 @@
+{
+  "experiment_id": "nn_entropy_MIC_PAO1_PA",
+  "model_type": "nn",
+  "feature_set": "entropy",
+  "target": "MIC_PAO1_PA",
+  "n_folds": 5,
+  "is_classification": false,
+  "metrics_mean": {
+    "rmse": 54.06757195575484,
+    "mae": 38.473350777976975,
+    "r2": -0.011246150710044912
+  },
+  "metrics_std": {
+    "rmse": 7.762062053731731,
+    "mae": 6.038435410911641,
+    "r2": 0.18925095360305397
+  }
+}

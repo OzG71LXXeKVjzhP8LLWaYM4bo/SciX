@@ -1,0 +1,18 @@
+{
+  "experiment_id": "logistic_combined_MIC_PAO1",
+  "model_type": "logistic",
+  "feature_set": "combined",
+  "target": "MIC_PAO1",
+  "n_folds": 5,
+  "is_classification": true,
+  "metrics_mean": {
+    "accuracy": 0.7841897233201582,
+    "f1_macro": 0.6110812554629759,
+    "f1_weighted": 0.7669707403997534
+  },
+  "metrics_std": {
+    "accuracy": 0.05073165257861085,
+    "f1_macro": 0.10304060716540989,
+    "f1_weighted": 0.05315209281060601
+  }
+}

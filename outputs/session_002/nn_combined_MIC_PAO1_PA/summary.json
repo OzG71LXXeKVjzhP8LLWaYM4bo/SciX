@@ -1,0 +1,18 @@
+{
+  "experiment_id": "nn_combined_MIC_PAO1_PA",
+  "model_type": "nn",
+  "feature_set": "combined",
+  "target": "MIC_PAO1_PA",
+  "n_folds": 5,
+  "is_classification": false,
+  "metrics_mean": {
+    "rmse": 52.46443434028051,
+    "mae": 36.856378927487526,
+    "r2": 0.08560607193287753
+  },
+  "metrics_std": {
+    "rmse": 10.592718452410068,
+    "mae": 6.770701331059562,
+    "r2": 0.24854207143729773
+  }
+}

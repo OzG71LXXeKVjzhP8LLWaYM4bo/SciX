@@ -1,0 +1,18 @@
+{
+  "experiment_id": "logistic_combined_MIC_SA",
+  "model_type": "logistic",
+  "feature_set": "combined",
+  "target": "MIC_SA",
+  "n_folds": 5,
+  "is_classification": true,
+  "metrics_mean": {
+    "accuracy": 0.9367588932806324,
+    "f1_macro": 0.8085079789491555,
+    "f1_weighted": 0.9396824260306589
+  },
+  "metrics_std": {
+    "accuracy": 0.022602337479044773,
+    "f1_macro": 0.1306395864941313,
+    "f1_weighted": 0.019822077916617085
+  }
+}

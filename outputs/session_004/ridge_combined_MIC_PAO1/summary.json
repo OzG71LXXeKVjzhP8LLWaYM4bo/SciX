@@ -1,0 +1,18 @@
+{
+  "experiment_id": "ridge_combined_MIC_PAO1",
+  "model_type": "ridge",
+  "feature_set": "combined",
+  "target": "MIC_PAO1",
+  "n_folds": 5,
+  "is_classification": false,
+  "metrics_mean": {
+    "rmse": 57.276277062009,
+    "mae": 37.92461559116342,
+    "r2": -0.1261373594106349
+  },
+  "metrics_std": {
+    "rmse": 7.484700047471927,
+    "mae": 6.7527819250473184,
+    "r2": 0.28174113155323804
+  }
+}

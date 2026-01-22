@@ -88,7 +88,8 @@ def cross_validate_model(
     n_splits: int = 5,
     is_classification: bool = False,
     random_state: int = 42,
-) -> tuple[dict[str, float], dict[str, float], list[dict[str, float]]]:
+    feature_names: list[str] = None,
+) -> tuple[dict[str, float], dict[str, float], list[dict[str, float]], list[dict]]:
     """
     Perform stratified k-fold cross-validation.
 
@@ -99,9 +100,11 @@ def cross_validate_model(
         n_splits: Number of CV folds (default 5)
         is_classification: Whether this is classification task
         random_state: Random seed for reproducibility
+        feature_names: List of feature column names for importance plots
 
     Returns:
-        Tuple of (metrics_mean, metrics_std, fold_metrics)
+        Tuple of (metrics_mean, metrics_std, fold_metrics, fold_data)
+        fold_data contains per-fold: y_true, y_pred, train_losses, val_losses, feature_importance
     """
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
 
@@ -113,6 +116,7 @@ def cross_validate_model(
         y_stratify = y
 
     fold_metrics = []
+    fold_data = []
     for fold_idx, (train_idx, test_idx) in enumerate(skf.split(X, y_stratify)):
         model = model_fn()  # Fresh model each fold
         X_train, X_test = X[train_idx], X[test_idx]
@@ -129,7 +133,7 @@ def cross_validate_model(
         # Fit model
         try:
             # Try to fit with validation set (for NN, XGBoost)
-            model.fit(X_tr, y_tr, X_val, y_val)
+            model.fit(X_tr, y_tr, X_val, y_val, feature_names=feature_names)
         except TypeError:
             # Fall back to simple fit for sklearn models
             model.fit(X_train, y_train)
@@ -145,10 +149,34 @@ def cross_validate_model(
 
         fold_metrics.append(metrics)
 
+        # Collect fold data for individual results
+        data = {
+            "y_true": y_test.tolist() if hasattr(y_test, 'tolist') else list(y_test),
+            "y_pred": y_pred.tolist() if hasattr(y_pred, 'tolist') else list(y_pred),
+            "train_losses": None,
+            "val_losses": None,
+            "feature_importance": None,
+        }
+
+        # Extract training history from NN models
+        if hasattr(model, 'history') and model.history is not None:
+            data["train_losses"] = model.history.train_losses
+            data["val_losses"] = model.history.val_losses
+
+        # Extract feature importance from XGBoost
+        if hasattr(model, 'get_feature_importance'):
+            data["feature_importance"] = model.get_feature_importance()
+
+        # Extract coefficients from Ridge/Logistic
+        if hasattr(model, 'get_coefficients'):
+            data["feature_importance"] = model.get_coefficients(feature_names=feature_names)
+
+        fold_data.append(data)
+
     # Aggregate results
     metrics_mean, metrics_std = aggregate_cv_results(fold_metrics)
 
-    return metrics_mean, metrics_std, fold_metrics
+    return metrics_mean, metrics_std, fold_metrics, fold_data
 
 
 def calculate_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
@@ -278,6 +306,49 @@ def plot_predictions(
     ax.legend(fontsize=10)
     ax.grid(True, alpha=0.3)
 
+    plt.tight_layout()
+
+    if save_path:
+        save_path = Path(save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+
+    return fig
+
+
+def plot_residuals(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    title: str = "Residual Distribution",
+    save_path: Optional[str | Path] = None,
+) -> plt.Figure:
+    """Plot residual distribution histogram."""
+    residuals = np.array(y_true) - np.array(y_pred)
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Histogram of residuals
+    ax1 = axes[0]
+    ax1.hist(residuals, bins=20, edgecolor='black', alpha=0.7, color='steelblue')
+    ax1.axvline(x=0, color='r', linestyle='--', linewidth=2, label='Zero')
+    ax1.axvline(x=np.mean(residuals), color='g', linestyle='-', linewidth=2,
+                label=f'Mean: {np.mean(residuals):.2f}')
+    ax1.set_xlabel("Residual (Actual - Predicted)", fontsize=12)
+    ax1.set_ylabel("Frequency", fontsize=12)
+    ax1.set_title("Residual Histogram", fontsize=14)
+    ax1.legend(fontsize=10)
+    ax1.grid(True, alpha=0.3)
+
+    # Residuals vs Predicted
+    ax2 = axes[1]
+    ax2.scatter(y_pred, residuals, alpha=0.6, edgecolor='k', linewidth=0.5)
+    ax2.axhline(y=0, color='r', linestyle='--', linewidth=2)
+    ax2.set_xlabel("Predicted Value", fontsize=12)
+    ax2.set_ylabel("Residual", fontsize=12)
+    ax2.set_title("Residuals vs Predicted", fontsize=14)
+    ax2.grid(True, alpha=0.3)
+
+    fig.suptitle(title, fontsize=14, y=1.02)
     plt.tight_layout()
 
     if save_path:

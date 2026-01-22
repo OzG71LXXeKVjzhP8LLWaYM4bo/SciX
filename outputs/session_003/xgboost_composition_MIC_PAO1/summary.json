@@ -1,0 +1,18 @@
+{
+  "experiment_id": "xgboost_composition_MIC_PAO1",
+  "model_type": "xgboost",
+  "feature_set": "composition",
+  "target": "MIC_PAO1",
+  "n_folds": 5,
+  "is_classification": false,
+  "metrics_mean": {
+    "rmse": 53.655280237851436,
+    "mae": 31.257391356220218,
+    "r2": 0.006175149657934731
+  },
+  "metrics_std": {
+    "rmse": 5.267024297369815,
+    "mae": 7.053237982747688,
+    "r2": 0.09484409524554618
+  }
+}

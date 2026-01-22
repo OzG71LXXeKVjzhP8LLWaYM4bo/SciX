@@ -1,0 +1,18 @@
+{
+  "experiment_id": "xgboost_combined_MIC_PAO1_PA",
+  "model_type": "xgboost",
+  "feature_set": "combined",
+  "target": "MIC_PAO1_PA",
+  "n_folds": 5,
+  "is_classification": false,
+  "metrics_mean": {
+    "rmse": 48.30111330906752,
+    "mae": 27.560526253986303,
+    "r2": 0.15624099870991784
+  },
+  "metrics_std": {
+    "rmse": 9.388067468877392,
+    "mae": 7.296354851208518,
+    "r2": 0.36006123477240176
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "experiment_id": "nn_composition_MIC_PAO1",
+  "model_type": "nn",
+  "feature_set": "composition",
+  "target": "MIC_PAO1",
+  "n_folds": 5,
+  "is_classification": false,
+  "metrics_mean": {
+    "rmse": 52.9970444413922,
+    "mae": 37.377021321903946,
+    "r2": 0.06764437633630889
+  },
+  "metrics_std": {
+    "rmse": 10.996431368647949,
+    "mae": 7.2691449901654215,
+    "r2": 0.25838051045292504
+  }
+}

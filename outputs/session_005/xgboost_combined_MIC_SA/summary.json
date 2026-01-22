@@ -1,0 +1,18 @@
+{
+  "experiment_id": "xgboost_combined_MIC_SA",
+  "model_type": "xgboost",
+  "feature_set": "combined",
+  "target": "MIC_SA",
+  "n_folds": 5,
+  "is_classification": false,
+  "metrics_mean": {
+    "rmse": 30.23438115805135,
+    "mae": 16.94076868894072,
+    "r2": 0.6586539427848894
+  },
+  "metrics_std": {
+    "rmse": 10.652291443441042,
+    "mae": 6.429662632995688,
+    "r2": 0.18273812177449636
+  }
+}

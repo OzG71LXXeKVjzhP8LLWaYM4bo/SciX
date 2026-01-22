@@ -1,0 +1,18 @@
+{
+  "experiment_id": "nn_entropy_MIC_SA",
+  "model_type": "nn",
+  "feature_set": "entropy",
+  "target": "MIC_SA",
+  "n_folds": 5,
+  "is_classification": false,
+  "metrics_mean": {
+    "rmse": 33.61475548370066,
+    "mae": 20.28000849546651,
+    "r2": 0.6244458668964374
+  },
+  "metrics_std": {
+    "rmse": 7.972803420874229,
+    "mae": 3.1348169979502236,
+    "r2": 0.14935236999469084
+  }
+}

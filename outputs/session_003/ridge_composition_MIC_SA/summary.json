@@ -1,0 +1,18 @@
+{
+  "experiment_id": "ridge_composition_MIC_SA",
+  "model_type": "ridge",
+  "feature_set": "composition",
+  "target": "MIC_SA",
+  "n_folds": 5,
+  "is_classification": false,
+  "metrics_mean": {
+    "rmse": 29.337152260113974,
+    "mae": 19.425685513440847,
+    "r2": 0.7075296500287083
+  },
+  "metrics_std": {
+    "rmse": 7.998688339990097,
+    "mae": 4.974134807156401,
+    "r2": 0.12764578973715937
+  }
+}

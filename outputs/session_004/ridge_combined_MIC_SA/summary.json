@@ -1,0 +1,18 @@
+{
+  "experiment_id": "ridge_combined_MIC_SA",
+  "model_type": "ridge",
+  "feature_set": "combined",
+  "target": "MIC_SA",
+  "n_folds": 5,
+  "is_classification": false,
+  "metrics_mean": {
+    "rmse": 27.20317524513866,
+    "mae": 15.979837329467504,
+    "r2": 0.7481202401178647
+  },
+  "metrics_std": {
+    "rmse": 6.467102512619237,
+    "mae": 2.9066936901040172,
+    "r2": 0.11404891499025113
+  }
+}

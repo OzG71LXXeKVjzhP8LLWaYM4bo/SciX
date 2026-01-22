@@ -1,0 +1,18 @@
+{
+  "experiment_id": "logistic_composition_MIC_PAO1",
+  "model_type": "logistic",
+  "feature_set": "composition",
+  "target": "MIC_PAO1",
+  "n_folds": 5,
+  "is_classification": true,
+  "metrics_mean": {
+    "accuracy": 0.7387351778656126,
+    "f1_macro": 0.504909718856588,
+    "f1_weighted": 0.7059563847021002
+  },
+  "metrics_std": {
+    "accuracy": 0.07807099576232943,
+    "f1_macro": 0.13974890517004418,
+    "f1_weighted": 0.08836130219816823
+  }
+}

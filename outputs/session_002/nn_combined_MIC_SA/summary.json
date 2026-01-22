@@ -1,0 +1,18 @@
+{
+  "experiment_id": "nn_combined_MIC_SA",
+  "model_type": "nn",
+  "feature_set": "combined",
+  "target": "MIC_SA",
+  "n_folds": 5,
+  "is_classification": false,
+  "metrics_mean": {
+    "rmse": 33.894258485031415,
+    "mae": 22.390593481252317,
+    "r2": 0.6132125267143046
+  },
+  "metrics_std": {
+    "rmse": 8.84688567752301,
+    "mae": 3.6322358733815685,
+    "r2": 0.15891732327701188
+  }
+}

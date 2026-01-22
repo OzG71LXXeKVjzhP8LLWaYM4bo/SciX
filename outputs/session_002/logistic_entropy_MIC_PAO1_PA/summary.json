@@ -1,0 +1,18 @@
+{
+  "experiment_id": "logistic_entropy_MIC_PAO1_PA",
+  "model_type": "logistic",
+  "feature_set": "entropy",
+  "target": "MIC_PAO1_PA",
+  "n_folds": 5,
+  "is_classification": true,
+  "metrics_mean": {
+    "accuracy": 0.7924901185770752,
+    "f1_macro": 0.6141643258689977,
+    "f1_weighted": 0.7718649740410799
+  },
+  "metrics_std": {
+    "accuracy": 0.07450356985602985,
+    "f1_macro": 0.13956580635781735,
+    "f1_weighted": 0.08360746038205981
+  }
+}

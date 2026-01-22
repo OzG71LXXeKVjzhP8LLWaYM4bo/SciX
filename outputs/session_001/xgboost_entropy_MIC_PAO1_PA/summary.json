@@ -1,0 +1,18 @@
+{
+  "experiment_id": "xgboost_entropy_MIC_PAO1_PA",
+  "model_type": "xgboost",
+  "feature_set": "entropy",
+  "target": "MIC_PAO1_PA",
+  "n_folds": 5,
+  "is_classification": false,
+  "metrics_mean": {
+    "rmse": 51.113606585324064,
+    "mae": 28.808517191652765,
+    "r2": 0.0642007635766693
+  },
+  "metrics_std": {
+    "rmse": 10.380356232235343,
+    "mae": 8.40418924729517,
+    "r2": 0.41398919887638974
+  }
+}

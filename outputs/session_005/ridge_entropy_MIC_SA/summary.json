@@ -1,0 +1,18 @@
+{
+  "experiment_id": "ridge_entropy_MIC_SA",
+  "model_type": "ridge",
+  "feature_set": "entropy",
+  "target": "MIC_SA",
+  "n_folds": 5,
+  "is_classification": false,
+  "metrics_mean": {
+    "rmse": 28.638199508835747,
+    "mae": 16.636498848664036,
+    "r2": 0.698976357364204
+  },
+  "metrics_std": {
+    "rmse": 9.037557839767882,
+    "mae": 4.70990082285818,
+    "r2": 0.18266544031179635
+  }
+}

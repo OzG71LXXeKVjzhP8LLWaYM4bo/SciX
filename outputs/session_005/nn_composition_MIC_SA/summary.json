@@ -1,0 +1,18 @@
+{
+  "experiment_id": "nn_composition_MIC_SA",
+  "model_type": "nn",
+  "feature_set": "composition",
+  "target": "MIC_SA",
+  "n_folds": 5,
+  "is_classification": false,
+  "metrics_mean": {
+    "rmse": 35.63776668092638,
+    "mae": 25.49856555622086,
+    "r2": 0.5566552667780578
+  },
+  "metrics_std": {
+    "rmse": 8.451334273335323,
+    "mae": 4.961587608667457,
+    "r2": 0.20470748288966656
+  }
+}

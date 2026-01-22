@@ -1,0 +1,18 @@
+{
+  "experiment_id": "ridge_entropy_MIC_PAO1_PA",
+  "model_type": "ridge",
+  "feature_set": "entropy",
+  "target": "MIC_PAO1_PA",
+  "n_folds": 5,
+  "is_classification": false,
+  "metrics_mean": {
+    "rmse": 58.61525739632516,
+    "mae": 37.081787021448335,
+    "r2": -0.15370702237593503
+  },
+  "metrics_std": {
+    "rmse": 8.30590787672482,
+    "mae": 6.323022654122479,
+    "r2": 0.24870223136496594
+  }
+}

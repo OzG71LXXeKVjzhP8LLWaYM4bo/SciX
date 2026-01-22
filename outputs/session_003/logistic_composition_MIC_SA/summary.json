@@ -1,0 +1,18 @@
+{
+  "experiment_id": "logistic_composition_MIC_SA",
+  "model_type": "logistic",
+  "feature_set": "composition",
+  "target": "MIC_SA",
+  "n_folds": 5,
+  "is_classification": true,
+  "metrics_mean": {
+    "accuracy": 0.9458498023715414,
+    "f1_macro": 0.8672201001612766,
+    "f1_weighted": 0.9405260899425046
+  },
+  "metrics_std": {
+    "accuracy": 0.01839537751497251,
+    "f1_macro": 0.10841220985292592,
+    "f1_weighted": 0.020397232771155686
+  }
+}

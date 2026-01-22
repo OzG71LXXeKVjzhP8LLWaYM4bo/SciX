@@ -1,0 +1,21 @@
+{
+  "model_type": "xgboost",
+  "feature_set": "entropy",
+  "feature_columns": [
+    "Number of blocks",
+    "dpn",
+    "Dispersity",
+    "cLogP_predicted",
+    "Target",
+    "NMR",
+    "GPC",
+    "composition_entropy",
+    "block_entropy",
+    "sequence_entropy",
+    "randomness_score"
+  ],
+  "target": "MIC_SA",
+  "n_folds": 5,
+  "random_state": 123,
+  "is_classification": false
+}
